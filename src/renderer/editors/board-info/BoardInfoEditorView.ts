@@ -461,7 +461,8 @@ class BoardInfoBodyView extends VanillaView<BoardInfoBodyProps> {
                 const schemes = (provider.schemes?.length ?? 0) > 0
                     ? ` (${untranslated(provider.schemes?.join(", ") ?? "")})`
                     : "";
-                providers.append(text(`${untranslated(provider.type)}${schemes}`, { size: "sm" }));
+                const tree = provider.tree === true ? ` · ${t("board.treeProvider")}` : "";
+                providers.append(text(`${untranslated(provider.type)}${schemes}${tree}`, { size: "sm" }));
             }
             metadata.append(this.infoRow(t("board.contentProviders"), providers));
         }

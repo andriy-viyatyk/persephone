@@ -19,6 +19,7 @@ export interface SecondaryViewDecl {
 export interface BoardContentProviderDeclaration {
     type: string;
     schemes?: string[];
+    tree?: boolean;
 }
 
 export interface BoardCapabilityDeclaration {
@@ -253,13 +254,13 @@ export function normalizeContentProviders(raw: unknown): BoardContentProviderDec
     const out: BoardContentProviderDeclaration[] = [];
     for (const entry of raw) {
         if (!entry || typeof entry !== "object" || Array.isArray(entry)) continue;
-        const candidate = entry as { type?: unknown; schemes?: unknown };
+        const candidate = entry as { type?: unknown; schemes?: unknown; tree?: unknown };
         const type = typeof candidate.type === "string" ? candidate.type.trim() : "";
         if (!type) continue;
         const schemes = normalizeStringList(candidate.schemes, {
             map: (entry) => entry.trim().toLowerCase().replace(/:$/, ""),
         });
-        out.push({ type, schemes });
+        out.push({ type, schemes, ...(candidate.tree === true ? { tree: true } : {}) });
     }
     return out;
 }

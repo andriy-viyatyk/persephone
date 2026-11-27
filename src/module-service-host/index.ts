@@ -12,6 +12,7 @@ import { createCapabilityHost } from "./capabilities";
 import { createServiceApi } from "./service-api";
 import { createRendererLeaseManager, type RendererLeaseManager } from "./renderer-lease";
 import { createProviderDispatch } from "./provider-dispatch";
+import { createTreeProviderDispatch } from "./tree-provider-dispatch";
 
 type HostLifecycleMessage = ServiceParentMessage & { eventPort?: MessagePortMain };
 const parentPort = process.parentPort;
@@ -51,10 +52,18 @@ const lifecycle = createHostLifecycle({
 });
 const mainRequests = createMainRequestClients({ configReady: lifecycle.configReady, post: postMainMessage, nextSequence: (): number => ++requestNumber });
 const rendererLeaseReference = createRendererLeaseReference();
+const providerDispatchReference: { current?: ReturnType<typeof createProviderDispatch> } = {};
+const treeProviderDispatch = createTreeProviderDispatch({
+    announceCapabilities: (): void => {
+        for (const lease of rendererLeaseReference.get().values()) providerDispatchReference.current?.announceCapabilities(lease);
+    },
+});
 const providerDispatch = createProviderDispatch({
     rendererLeases: rendererLeaseReference.get,
     entryLoaded: (): boolean => lifecycle.entryLoaded,
+    treeProviders: treeProviderDispatch,
 });
+providerDispatchReference.current = providerDispatch;
 const rendererLeases = createRendererLeaseManager({
     postMain: postMainMessage,
     announceCapabilities: providerDispatch.announceCapabilities,
@@ -97,6 +106,7 @@ const serviceApi = createServiceApi({
     nextSequence: (): number => ++requestNumber,
     protocolMode: (): ReturnType<RawProtocolCompat["getProtocolMode"]> => rawCompat.getProtocolMode(),
     providers: providerDispatch,
+    treeProviders: treeProviderDispatch,
     capabilities: capabilityHost,
     lifecycle,
     channels: serviceChannels,

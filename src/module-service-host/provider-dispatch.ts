@@ -2,9 +2,11 @@ import { MAX_BUFFERED_PIPE_BYTES, MAX_BOARD_PIPE_CHUNK_BYTES } from "../shared/b
 import { MAX_OUTSTANDING_REQUESTS_PER_SERVICE } from "../shared/capability-limits";
 import { PROVIDER_OPERATION_POLICY } from "../shared/provider-operation-policy";
 import { errMessage } from "../shared/utils";
-import type { ProviderOperation, ProviderRequest, ProviderResult, ProviderWireErrorCode, ProviderWireStat, ProviderWireStatus } from "../ipc/module-service-channels";
+import type { ProviderOperation, ProviderRequest, ProviderResult, ProviderWireErrorCode, ProviderWireStat, ProviderWireStatus, TreeProviderRequest } from "../ipc/module-service-channels";
 import type { RendererLease, RendererLeaseManager, ProviderSubscription } from "./renderer-lease";
 import { isRecord } from "./validation";
+import type { TreeProviderDispatch } from "./tree-provider-dispatch";
+import { isValidTreePath } from "./tree-provider-dispatch";
 
 export interface ProviderImplementation {
     readBinary(config: Record<string, unknown>, context: { signal: AbortSignal }): Promise<unknown> | unknown;
@@ -34,10 +36,16 @@ type ValidatedProviderRequest = ProviderRequest & (
     | { operation: "readBinary" | "stat" }
     | { operation: "readRange"; range: { start: number; end: number } }
     | { operation: "writeBinary"; data: Uint8Array }
+    | { operation: "treeList" | "treeStat" | "treeMkdir" | "treeDelete"; path: string }
+    | { operation: "treeRename"; path: string; newPath: string }
     | { operation: "watchSubscribe" | "watchUnsubscribe" | "statusSubscribe" | "statusUnsubscribe"; subscriptionId: string }
 );
 
-export function createProviderDispatch(dependencies: { rendererLeases(): RendererLeaseManager; entryLoaded(): boolean }): ProviderDispatch {
+export function createProviderDispatch(dependencies: {
+    rendererLeases(): RendererLeaseManager;
+    entryLoaded(): boolean;
+    treeProviders: TreeProviderDispatch;
+}): ProviderDispatch {
     const providers = new Map<string, ProviderImplementation>();
     const PROVIDER_STATUS_STATES: ReadonlySet<string> = new Set(["idle", "connecting", "active", "done", "error"]);
     const PROVIDER_STATUS_INTERVAL_MS = 250;
@@ -48,12 +56,17 @@ function providerKey(type: string, subscriptionId: string): string {
 
 function announceCapabilities(lease: RendererLease): void {
     if (!lease?.attached || !dependencies.entryLoaded() || !dependencies.rendererLeases().isCurrent(lease)) return;
-    for (const [type, implementation] of providers) {
+    const types = new Set([...providers.keys(), ...dependencies.treeProviders.types()]);
+    for (const type of types) {
+        const implementation = providers.get(type);
+        const tree = dependencies.treeProviders.capabilities(type);
         dependencies.rendererLeases().post(lease, {
             kind: "provider-capabilities",
             type,
-            writable: implementation.writable === true && typeof implementation.writeBinary === "function",
-            rangeReadable: typeof implementation.readRange === "function",
+            writable: implementation?.writable === true && typeof implementation.writeBinary === "function",
+            rangeReadable: typeof implementation?.readRange === "function",
+            treeRegistered: tree !== undefined,
+            tree: tree ?? { mkdir: false, rename: false, delete: false },
         });
     }
 }
@@ -96,6 +109,13 @@ function isProviderRequest(message: unknown, validation: { message?: string }): 
         && (!isUint8Array(message.data) || message.data.byteLength > MAX_BUFFERED_PIPE_BYTES)) {
         validation.message = "Malformed or oversized provider payload."; return false;
     }
+    if (["treeList", "treeStat", "treeMkdir", "treeRename", "treeDelete"].includes(message.operation)) {
+        if (!isValidTreePath(message.path)
+            || (message.operation === "treeRename" && !isValidTreePath(message.newPath))) {
+            validation.message = "Malformed tree provider path.";
+            return false;
+        }
+    }
     if (message.operation === "readRange") {
         const range = message.range;
         if (!isRecord(range)
@@ -125,6 +145,9 @@ function validStat(stat: unknown): stat is ProviderWireStat {
 }
 
 async function executeProviderRequest(lease: RendererLease, request: ValidatedProviderRequest, controller: AbortController): Promise<ProviderResult> {
+    if (request.operation.startsWith("tree")) {
+        return dependencies.treeProviders.execute(request as TreeProviderRequest, controller.signal);
+    }
     const implementation = providers.get(request.type);
     if (!implementation) return providerFailure("provider-not-registered", `Provider "${request.type}" is not registered.`);
 
@@ -172,7 +195,7 @@ async function executeProviderRequest(lease: RendererLease, request: ValidatedPr
         if (typeof implementation.stat !== "function") {
             return { kind: "provider-result", operation: "stat", ok: true, stat: { exists: true } };
         }
-        // The renderer owns provider-operation deadlines; stat has no deadline by policy.
+        // Content stat remains a control request with no deadline by policy.
         const stat = await Promise.resolve(
             implementation.stat(request.config, { signal: controller.signal }),
         );

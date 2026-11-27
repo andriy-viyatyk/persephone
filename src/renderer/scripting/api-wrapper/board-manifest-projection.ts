@@ -129,8 +129,13 @@ export function projectBoardCapability(capability: {
 export function projectBoardContentProvider(provider: {
     type: string;
     schemes?: string[];
+    tree?: boolean;
 }): IBoardContentProviderDeclaration {
-    return { type: provider.type, schemes: provider.schemes ? [...provider.schemes] : [] };
+    return {
+        type: provider.type,
+        schemes: provider.schemes ? [...provider.schemes] : [],
+        ...(provider.tree === true ? { tree: true } : {}),
+    };
 }
 
 export function projectBoardSetting(setting: {

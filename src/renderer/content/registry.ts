@@ -37,6 +37,8 @@ export interface ProviderDeclaration {
     readonly boardRoot?: string;
     readonly boardName?: string;
     readonly trusted: boolean;
+    readonly schemes: readonly string[];
+    readonly tree?: boolean;
 }
 
 interface ProviderRegistration {

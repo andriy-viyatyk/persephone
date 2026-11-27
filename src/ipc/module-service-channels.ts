@@ -181,6 +181,35 @@ export interface ProviderRequest {
     subscriptionId?: string;
     data?: Uint8Array;
     range?: { start: number; end: number };
+    path?: string;
+    newPath?: string;
+}
+
+export type TreeProviderOperation = "treeList" | "treeStat" | "treeMkdir" | "treeRename" | "treeDelete";
+
+export interface TreeProviderRequest {
+    kind: "provider";
+    operation: TreeProviderOperation;
+    type: string;
+    config: Record<string, unknown>;
+    path: string;
+    newPath?: string;
+}
+
+export interface ProviderTreeItem {
+    name: string;
+    path: string;
+    href: string;
+    isDirectory: boolean;
+    size?: number;
+    mtime?: string;
+}
+
+export interface ProviderTreeStat {
+    exists: boolean;
+    isDirectory: boolean;
+    size?: number;
+    mtime?: string;
 }
 
 export interface ProviderWireStat {
@@ -216,6 +245,9 @@ export type ProviderResult =
     | { kind: "provider-result"; operation: "readRange"; ok: true; data: Uint8Array }
     | { kind: "provider-result"; operation: "writeBinary"; ok: true }
     | { kind: "provider-result"; operation: "stat"; ok: true; stat: ProviderWireStat }
+    | { kind: "provider-result"; operation: "treeList"; ok: true; items: ProviderTreeItem[]; truncated: boolean }
+    | { kind: "provider-result"; operation: "treeStat"; ok: true; stat: ProviderTreeStat }
+    | { kind: "provider-result"; operation: "treeMkdir" | "treeRename" | "treeDelete"; ok: true }
     | { kind: "provider-result"; operation: "watchSubscribe" | "watchUnsubscribe" | "statusSubscribe" | "statusUnsubscribe"; ok: true }
     | { kind: "provider-result"; ok: false; error: ProviderWireError };
 
@@ -236,9 +268,11 @@ export interface ProviderCapabilities {
     type: string;
     writable: boolean;
     rangeReadable: boolean;
+    treeRegistered: boolean;
+    tree: { mkdir: boolean; rename: boolean; delete: boolean };
 }
 
-/** Pushed by the host whenever the number of in-flight `readBinary`/`readRange` requests for a
+/** Pushed by the host whenever the number of in-flight content-read-class requests for a
  *  lease changes. This count lets the board know a read is outstanding without identifying it. */
 export interface ProviderActiveContentReadCount {
     kind: "content-read-count";
@@ -249,9 +283,9 @@ export type RendererServiceMessage =
     | { kind: "hello"; generation: number; leaseNonce: string }
     | { kind: "hello-ack"; generation: number; leaseNonce: string }
     | { kind: "request"; requestId: string; message: unknown }
-    /** Renderer → host only, no response expected. Frees the matching `readBinary`/`readRange`
-     *  request's slot and best-effort aborts the board's implementation. Never sent for
-     *  control operations (`writeBinary`/`stat`/`watch*`), which keep their 10s deadline instead. */
+    /** Renderer → host only, no response expected. Frees the matching content-read-class
+     *  request's slot and best-effort aborts the board's implementation. Cancellation releases
+     *  the slot even when the board ignores its signal. */
     | { kind: "cancel"; requestId: string }
     | { kind: "response"; requestId: string; result?: unknown; error?: ServiceErrorPayload }
     | ProviderEvent

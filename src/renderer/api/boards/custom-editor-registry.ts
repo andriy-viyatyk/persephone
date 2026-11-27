@@ -222,6 +222,8 @@ function collectProviderAxis(sources: readonly BoardRefreshSource[]): CollectedP
                 boardRoot: source.root,
                 boardName,
                 trusted: true,
+                schemes: declaration.schemes ?? [],
+                ...(declaration.tree === true ? { tree: true } : {}),
             });
         }
     }
@@ -230,7 +232,14 @@ function collectProviderAxis(sources: readonly BoardRefreshSource[]): CollectedP
         const boardName = source.boardName;
         for (const declaration of source.manifest?.contentProviders ?? []) {
             if (boardProviderTypeRefusal(declaration.type)) continue;
-            declarations.push({ type: declaration.type, boardRoot: source.root, boardName, trusted: false });
+            declarations.push({
+                type: declaration.type,
+                boardRoot: source.root,
+                boardName,
+                trusted: false,
+                schemes: declaration.schemes ?? [],
+                ...(declaration.tree === true ? { tree: true } : {}),
+            });
         }
     }
     return { intents, declarations };

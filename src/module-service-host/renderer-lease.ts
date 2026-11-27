@@ -127,6 +127,7 @@ export function createRendererLeaseManager(dependencies: {
                     if (pending) {
                         lease.pending.delete(nested.requestId);
                         if (pending.isContentRead) adjustContentReads(lease, -1);
+                        // Free the pending slot even when the implementation ignores abort.
                         pending.controller?.abort();
                     }
                     return;

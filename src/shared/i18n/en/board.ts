@@ -16,6 +16,7 @@ export const boardCatalog = {
     pasteFailed: { message: "Paste failed: {error}", note: "Board context-menu action feedback. Keep {error} unchanged." },
     frameTitle: { message: "Board" },
     contentUnavailable: { message: "Content unavailable" },
+    treeProvider: { message: "Tree" },
     notFoundTitle: { message: "Board not found" },
     notFoundMessage: { message: "This board could not be opened — its folder is missing or is not a board (no {manifest}).", note: "Keep the manifest filename unchanged." },
     notTrustedTitle: { message: "This board is not trusted" },

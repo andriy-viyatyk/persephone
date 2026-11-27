@@ -9,6 +9,7 @@ import type { HostLifecycle } from "./lifecycle";
 import type { ProtocolMode } from "./raw-protocol-compat";
 import type { ServiceChannelManager } from "./service-channels";
 import type { ProviderDispatch } from "./provider-dispatch";
+import type { TreeProviderDispatch } from "./tree-provider-dispatch";
 import { isRecord } from "./validation";
 
 export interface McpSessionEndpoint {
@@ -42,6 +43,7 @@ export interface PersephoneHostApi {
     settings?: { get(id: string): Promise<string | boolean | number>; onChange(callback: (change: { id: string; value: string | boolean | number }) => void): () => void };
     storage?: { get(key: unknown): Promise<unknown>; set(key: unknown, value: unknown): Promise<unknown>; delete(key: unknown): Promise<unknown>; keys(): Promise<unknown> };
     providers?: { register(type: string, implementation: unknown): void };
+    treeProviders?: { register(type: string, implementation: unknown): void };
     getCapability?: (id: string, options?: CapabilityClientOptions) => Promise<CapabilityProxy | null>;
     capabilities?: { list(): Promise<unknown>; providers(id: string): Promise<unknown>; handle(id: string, method: string, handler: CapabilityHandler): () => void };
     service?: { onRequest(handler: ServiceRequestHandler): void; onChannel(handler: ServiceChannelHandler): void; onShutdown(handler: ServiceShutdownHandler): void };
@@ -62,6 +64,7 @@ export function createServiceApi(dependencies: {
     nextSequence(): number;
     protocolMode(): ProtocolMode;
     providers: ProviderDispatch;
+    treeProviders: TreeProviderDispatch;
     capabilities: CapabilityHost;
     lifecycle: HostLifecycle;
     channels: ServiceChannelManager;
@@ -161,6 +164,7 @@ export function createServiceApi(dependencies: {
             keys: (): Promise<unknown> => dependencies.requests.storage.request((requestId): Extract<ServiceMainMessage, { kind: "storage-request" }> => ({ kind: "storage-request", requestId, operation: "keys", args: [] })),
         },
         providers: { register: dependencies.providers.register },
+        treeProviders: { register: dependencies.treeProviders.register },
         getCapability: dependencies.capabilities.getCapability,
         capabilities: {
             list: dependencies.capabilities.list,
@@ -221,6 +225,7 @@ function installServiceApi(api: PersephoneHostApi): PersephoneHostApi {
     persephone.settings = api.settings;
     persephone.storage = api.storage;
     persephone.providers = api.providers;
+    persephone.treeProviders = api.treeProviders;
     persephone.getCapability = api.getCapability;
     persephone.capabilities = api.capabilities;
     persephone.service = api.service;

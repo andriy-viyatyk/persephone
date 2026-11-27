@@ -8,7 +8,12 @@ export type ProviderOperation =
     | "watchSubscribe"
     | "watchUnsubscribe"
     | "statusSubscribe"
-    | "statusUnsubscribe";
+    | "statusUnsubscribe"
+    | "treeList"
+    | "treeStat"
+    | "treeMkdir"
+    | "treeRename"
+    | "treeDelete";
 
 export interface ProviderOperationPolicy {
     /** End-to-end deadline, owned by the renderer client (`module-service.request`); absent =
@@ -29,4 +34,9 @@ export const PROVIDER_OPERATION_POLICY: Readonly<Record<ProviderOperation, Provi
     watchUnsubscribe: { deadlineMs: CAPABILITY_DEFAULT_TIMEOUT_MS, requestClass: "control" },
     statusSubscribe: { deadlineMs: CAPABILITY_DEFAULT_TIMEOUT_MS, requestClass: "control" },
     statusUnsubscribe: { deadlineMs: CAPABILITY_DEFAULT_TIMEOUT_MS, requestClass: "control" },
+    treeList: { requestClass: "content-read" },
+    treeStat: { requestClass: "content-read" },
+    treeMkdir: { deadlineMs: CAPABILITY_DEFAULT_TIMEOUT_MS, requestClass: "control" },
+    treeRename: { deadlineMs: CAPABILITY_DEFAULT_TIMEOUT_MS, requestClass: "control" },
+    treeDelete: { deadlineMs: CAPABILITY_DEFAULT_TIMEOUT_MS, requestClass: "control" },
 };

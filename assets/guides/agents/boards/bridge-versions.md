@@ -6,6 +6,10 @@ summary: "Which bridge version added each persephone.* member and manifest field
 
 # Boards — bridge version history and compatibility
 
+Bridge `1.64.0` adds the manifest `contentProviders[].tree` flag and the host-service
+`persephone.treeProviders.register(type, implementation)` API for listing, statting, and optional
+tree writes. Boards using tree providers should declare `minBridgeVersion: "1.64.0"`.
+
 Bridge `1.63.0` lets `pages[i].editor.attachTestExtension()` accept `scriptPath` as an ordered
 array of absolute files or a folder of direct `.js` / `.JS` files, in addition to one file. Board
 `persephone.call()` forwards the option through its existing browser-editor route. Files in a folder

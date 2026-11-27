@@ -8,7 +8,10 @@ import {
     STOP_REASON_CODE,
     type BoardServiceStatus,
     type ProviderRequest,
+    type ProviderResult,
     type ProviderWireStatus,
+    type TreeProviderRequest,
+    type TreeProviderOperation,
     type RendererServiceMessage,
 } from "../../ipc/module-service-channels";
 import { api } from "../../ipc/renderer/api";
@@ -21,7 +24,7 @@ interface PendingRequest {
     reject: (reason: Error) => void;
     timer?: ReturnType<typeof setTimeout>;
     removeAbortListener?: () => void;
-    /** `readBinary`/`readRange` are excluded from the shared control-request cap. */
+    /** Content-read-class operations are excluded from the shared control-request cap. */
     requestClass: "content-read" | "control";
 }
 
@@ -55,11 +58,12 @@ interface ServiceLeaseClient {
     pending: Map<string, PendingRequest>;
     capabilities: Map<string, boolean>;
     rangeCapabilities: Map<string, boolean>;
+    treeCapabilities: Map<string, { registered: boolean; capabilities: { mkdir: boolean; rename: boolean; delete: boolean } }>;
     watchIntents: Map<string, ProviderWatchIntent>;
     statusIntents: Map<string, ProviderStatusIntent>;
     requestNumber: number;
     disposed: boolean;
-    /** Live count of outstanding `readBinary`/`readRange` requests, pushed by the host via
+    /** Live count of outstanding content-read-class requests, pushed by the host via
      *  `content-read-count` event. */
     activeContentReads: number;
 }
@@ -101,6 +105,7 @@ function getClient(boardRoot: string): ServiceLeaseClient {
             pending: new Map(),
             capabilities: new Map(),
             rangeCapabilities: new Map(),
+            treeCapabilities: new Map(),
             watchIntents: new Map(),
             statusIntents: new Map(),
             requestNumber: 0,
@@ -176,6 +181,14 @@ function handleMessage(client: ServiceLeaseClient, message: RendererServiceMessa
         if (client.state === "attached" && typeof message.type === "string") {
             client.capabilities.set(message.type, message.writable === true);
             client.rangeCapabilities.set(message.type, message.rangeReadable === true);
+            client.treeCapabilities.set(message.type, {
+                registered: message.treeRegistered === true,
+                capabilities: {
+                    mkdir: message.tree?.mkdir === true,
+                    rename: message.tree?.rename === true,
+                    delete: message.tree?.delete === true,
+                },
+            });
         }
         return;
     }
@@ -256,6 +269,7 @@ function loseLease(client: ServiceLeaseClient, code: string): void {
     client.state = "lost";
     client.capabilities.clear();
     client.rangeCapabilities.clear();
+    client.treeCapabilities.clear();
     client.activeContentReads = 0;
     for (const intent of client.watchIntents.values()) intent.acknowledged = false;
     for (const intent of client.statusIntents.values()) {
@@ -369,6 +383,46 @@ function request(
             const dropped = dropPending(client, requestId);
             dropped?.reject(serviceError(error));
         });
+    });
+}
+
+type TreeProviderSuccess = Extract<ProviderResult, { operation: TreeProviderOperation; ok: true }>;
+type TreeProviderFailure = Extract<ProviderResult, { ok: false }>;
+
+function requestTree(
+    boardRoot: string,
+    message: TreeProviderRequest,
+    signal?: AbortSignal,
+): Promise<TreeProviderSuccess | TreeProviderFailure> {
+    return request(boardRoot, message, signal).then((value: unknown): TreeProviderSuccess | TreeProviderFailure => {
+        if (!value || typeof value !== "object") throw codedError("provider-invalid-result", "Tree provider response was malformed.");
+        const result = value as { kind?: unknown; ok?: unknown; operation?: unknown; error?: unknown };
+        if (result.kind !== "provider-result" || typeof result.ok !== "boolean") {
+            throw codedError("provider-invalid-result", "Tree provider response was malformed.");
+        }
+        if (result.ok === false) {
+            const error = result.error as { kind?: unknown; code?: unknown; message?: unknown } | undefined;
+            if (!error || error.kind !== "provider-error"
+                || typeof error.code !== "string" || typeof error.message !== "string") {
+                throw codedError("provider-invalid-result", "Tree provider error response was malformed.");
+            }
+            return result as TreeProviderFailure;
+        }
+        if (result.operation !== message.operation) {
+            throw codedError("provider-invalid-result", "Tree provider response operation did not match the request.");
+        }
+        if (message.operation === "treeList"
+            && (!Array.isArray((value as { items?: unknown }).items)
+                || typeof (value as { truncated?: unknown }).truncated !== "boolean")) {
+            throw codedError("provider-invalid-result", "Tree list response was malformed.");
+        }
+        if (message.operation === "treeStat") {
+            const stat = (value as { stat?: { exists?: unknown; isDirectory?: unknown } }).stat;
+            if (!stat || typeof stat.exists !== "boolean" || typeof stat.isDirectory !== "boolean") {
+                throw codedError("provider-invalid-result", "Tree stat response was malformed.");
+            }
+        }
+        return result as TreeProviderSuccess;
     });
 }
 
@@ -532,7 +586,15 @@ function providerRangeReadable(boardRoot: string, type: string): boolean | undef
     return client?.rangeCapabilities.get(type);
 }
 
-/** Live count of `readBinary`/`readRange` requests currently outstanding against this board's
+function providerTreeCapabilities(
+    boardRoot: string,
+    type: string,
+): { mkdir: boolean; rename: boolean; delete: boolean } | undefined {
+    const entry = clients.get(BoardRoot.from(boardRoot).key)?.treeCapabilities.get(type);
+    return entry?.registered ? { ...entry.capabilities } : undefined;
+}
+
+/** Live count of content-read-class requests currently outstanding against this board's
  *  service. Mirrors `providerWritable`/`providerRangeReadable`'s shape —
  *  a plain getter, no new subscription primitive. */
 function activeContentReads(boardRoot: string): number {
@@ -542,9 +604,11 @@ function activeContentReads(boardRoot: string): number {
 export const moduleService = {
     acquire,
     request,
+    requestTree,
     subscribeProvider,
     subscribeProviderStatus,
     providerWritable,
     providerRangeReadable,
+    providerTreeCapabilities,
     activeContentReads,
 };

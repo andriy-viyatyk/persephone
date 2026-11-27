@@ -56,6 +56,7 @@ export interface IBoardSecondaryViewDeclaration {
 export interface IBoardContentProviderDeclaration {
     readonly type: string;
     readonly schemes?: readonly string[];
+    readonly tree?: boolean;
 }
 
 export interface IBoardCapabilityDeclaration {
