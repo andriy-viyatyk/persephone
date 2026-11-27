@@ -90,6 +90,11 @@ async function cleanupThemeEditor(ctx, handle, root, originalTheme, originalCust
         // preview anyway, and revert refuses once the draft's saved theme was removed by the test.
         try {
             const editor = handle.editor ?? ctx.app.pages[handle.id].editor;
+            // The board rejects revert while it is still loading or generating; an unreverted new draft
+            // leaves the page modified, and closing it then opens an Unsaved Changes dialog.
+            await ctx.waitFor(async () => {
+                try { return await editor.app.busy; } catch { return null; }
+            }, (busy) => busy === false);
             const draft = await editor.app.draft;
             if (draft != null) await editor.app.revert();
         } catch { /* see above */ }
@@ -242,17 +247,19 @@ export default [
             const opened = await ctx.app.capabilities["theme.edit"].open({ mode: "new" });
             ctx.expect(opened.result.accepted).toBe(true);
             handle = { id: opened.pageId, root };
-            const draft = await ctx.waitFor(
+            // The draft appears before the board finishes loading; wait until it is also idle.
+            const ready = await ctx.waitFor(
                 async (active) => {
                     try {
-                        return await active.app.pages[opened.pageId].editor.app.draft;
+                        const editorApp = active.app.pages[opened.pageId].editor.app;
+                        return { draft: await editorApp.draft, busy: await editorApp.busy };
                     } catch {
                         return null;
                     }
                 },
-                (value) => value != null,
+                (value) => value?.draft != null && value.busy === false,
             );
-            ctx.expect(draft).toBeTruthy();
+            ctx.expect(ready.draft).toBeTruthy();
         } finally {
             await cleanupThemeEditor(ctx, handle, root, originalTheme, originalCustomIds);
         }
