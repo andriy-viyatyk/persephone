@@ -20,7 +20,7 @@ import type {
 } from "../../api/mneme-types";
 
 const MNEME_CONFIG_ELEMENTS: readonly IAiElementDeclaration[] = [
-    { name: "mneme-start", purpose: "Locate the visible control that starts the stopped Mneme service.", where: "center of the stopped Mneme page" },
+    { name: "mneme-start", purpose: "Locate the visible control that starts the stopped Mneme service; it also turns on mneme.enabled when that setting is off.", where: "center of the stopped Mneme page" },
     { name: "mneme-open-settings", purpose: "Locate the visible control that opens Mneme settings.", where: "center of the stopped Mneme page, beside Start Mneme" },
     { name: "mneme-open-mcp-inspector", purpose: "Locate the visible control that opens the Mneme MCP Inspector.", where: "right side of the Mneme status bar" },
     { name: "mneme-open-log", purpose: "Locate the visible control that opens the Mneme sidecar log.", where: "far-right of the Mneme status bar" },

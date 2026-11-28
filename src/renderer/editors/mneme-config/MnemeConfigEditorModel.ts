@@ -147,6 +147,17 @@ export class MnemeConfigEditorModel extends EditorModel<MnemeConfigEditorState> 
         await mnemeConnection.reconnect();
     };
 
+    /** "Start Mneme" on the stopped page. While `mneme.enabled` is off, turning it on is the start:
+     *  the setting effect launches the sidecar and reports the result, and the shared connection
+     *  follows the setting (US-2241). While it is on, the sidecar has stopped, so restart it. */
+    startMneme = async (): Promise<void> => {
+        if (!settings.get("mneme.enabled")) {
+            settings.set("mneme.enabled", true);
+            return;
+        }
+        await this.restartMneme();
+    };
+
     /** Restart the Mneme sidecar process (recovers from a wedged MCP session or
      *  a crash) and reconnect. */
     restartMneme = async (): Promise<void> => {

@@ -35,7 +35,7 @@ class StoppedConfigView extends VanillaView<StoppedConfigProps> {
     public constructor(props: StoppedConfigProps) { super(props, createPanelElement({ direction: "column", flex: true, align: "center", justify: "center", gap: "md" })); }
     protected onMount(): void {
         const dot = this.child(new DotView({ size: "md", color: "neutral" }));
-        this.start = this.child(new ButtonView({ name: "mneme-start", variant: "primary", children: t("mneme.start", { product: untranslated("Mneme") }), onClick: () => { void this.props.model.restartMneme(); } }));
+        this.start = this.child(new ButtonView({ name: "mneme-start", variant: "primary", children: t("mneme.start", { product: untranslated("Mneme") }), onClick: () => { void this.props.model.startMneme(); } }));
         this.settings = this.child(new ButtonView({ name: "mneme-open-settings", children: t("mneme.openSettings"), onClick: () => { void pages.standalonePages.show("settings-page").then((): undefined => undefined); } }));
         const actions = createPanelElement({ direction: "row", gap: "sm" }); actions.append(this.start.root, this.settings.root);
         this.root.append(dot.root, createTextElement(t("mneme.notRunning", { product: untranslated("Mneme") }), { size: "lg", color: "light" }), createTextElement(t("mneme.disabledOrNotStarted", { product: untranslated("Mneme") }), { size: "md", color: "light" }), actions);
