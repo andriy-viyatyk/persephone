@@ -69,6 +69,8 @@ class ModuleServiceSupervisor {
     readonly boardSettings = new ServiceBoardSettingsAdapter({
         isAllowed: (record) => this.isBoardSettingsAllowed(record),
         selectRenderer: (excluded) => this.selectBoardSettingsRenderer(excluded),
+        isRendererReady: () => openWindows.windows.some((entry) => !entry.boardRoot && entry.rendererReady === true
+            && !!entry.window && !entry.window.window.isDestroyed()),
     });
     private readonly mcpEndpoints = new ServiceMcpEndpointAdapter({
         isRunningAndTrusted: (record) => record.state === "running" && !record.stopRequested && this.isEffectivelyTrusted(record.boardRoot),

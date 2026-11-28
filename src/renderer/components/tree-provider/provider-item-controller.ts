@@ -4,6 +4,7 @@ import { ContextMenuEvent } from "../../api/events/events";
 import { api } from "../../../ipc/renderer/api";
 import { getPlatformFeature } from "../../../shared/platform-features";
 import { isLocalFileProvider, treeTransferCapability } from "../../content/tree-providers/tree-provider-capabilities";
+import { schemeOf } from "../../content/scheme-registry";
 import type { MenuItem } from "../../uikit/Menu";
 import { copyPathsToOsClipboard } from "./os-clipboard";
 import {
@@ -143,13 +144,23 @@ export class ProviderItemController {
         await this.options.refresh();
     };
 
+    /** The root row's href is the provider's bare `rootPath`. For a non-local tree (board, Mneme)
+     *  that path would look like a disk path to link-menu handlers, which then offer OS actions
+     *  (Show in File Explorer, Open in New Tab). Hand them the tree's own scheme-qualified identity. */
+    private linkMenuTarget(item: ITreeProviderItem): ITreeProviderItem {
+        const provider = this.options.provider();
+        if (!this.options.isRoot(item) || isLocalFileProvider(provider)) return item;
+        const scheme = schemeOf(provider.sourceUrl);
+        return scheme && scheme.length > 1 ? { ...item, href: provider.sourceUrl } : item;
+    }
+
     onItemContextMenu = (item: ITreeProviderItem, event: MouseEvent): void => {
         this.options.setOutsideRightClickSelection(item);
         const contextEvent = ContextMenuEvent.fromNativeEvent(
             event,
             "tree-provider-item",
         ) as ContextMenuEvent<ITreeProviderItem>;
-        contextEvent.target = item;
+        contextEvent.target = this.linkMenuTarget(item);
 
         const multi = this.multiTargets(item);
         contextEvent.items.push(...(multi

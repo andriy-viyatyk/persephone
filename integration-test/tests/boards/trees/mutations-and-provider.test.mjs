@@ -125,6 +125,17 @@ export default [
             ctx.expect(labels).not.toContain("terminal");
             for (const id of ['"show-in-file-explorer"', '"open-in-new-window"', '"open-with:default-app"']) ctx.expect(labels).not.toContain(id);
             await ctx.call("menus[0].close", [], { dialog: true }).catch(() => undefined);
+            // The root row carries the bare root path; it must not be mistaken for a disk folder.
+            const treeRoot = `[data-name="page-slot"][data-page-id=${JSON.stringify(id)}] [data-type="tree-provider-view"]`;
+            const rootRef = await ctx.waitFor(async (active) => {
+                const snapshot = await active.callText("window.screen.snapshot", [{ interactive: true, root: treeRoot }], { dialog: true });
+                const row = snapshot.split("\n").find((line) => line.includes("treeitem") && line.includes("[level=1]"));
+                return row?.match(/\bref=(e\d+)\b/)?.[1] ?? null;
+            }, Boolean);
+            await ctx.call("window.screen.click", [{ ref: rootRef }, { button: "right" }], { dialog: true });
+            const rootLabels = JSON.stringify(await ctx.call("menus[0].items", undefined, { dialog: true })).toLowerCase();
+            await ctx.call("menus[0].close", [], { dialog: true }).catch(() => undefined);
+            for (const menuId of ['"show-in-file-explorer"', '"open-in-new-tab"']) ctx.expect(rootLabels).not.toContain(menuId);
             ctx.expect(await ctx.app.pages[id].panels.explorer.providerType).toBe("test/tree");
         } finally {
             for (const id of await treePageIds(ctx)) await ctx.app.pages.closePage(id).catch(() => undefined);

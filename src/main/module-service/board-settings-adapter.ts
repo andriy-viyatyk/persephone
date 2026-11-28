@@ -21,6 +21,8 @@ export interface BoardSettingsSubscription {
 export interface BoardSettingsAdapterContext {
     isAllowed(record: ServiceRecord): boolean;
     selectRenderer(excluded?: WebContents, signal?: AbortSignal): Promise<WebContents | undefined>;
+    /** Whether an app window has finished starting (its pages are restored). */
+    isRendererReady(): boolean;
 }
 
 type BoardSettingsRequest = Extract<ServiceMainMessage, { kind: "board-settings-get" | "board-settings-subscribe" | "board-settings-unsubscribe" | "board-vars-request" }>;
@@ -147,6 +149,13 @@ export class ServiceBoardSettingsAdapter {
         this.aborts.set(record, controllers);
         let stopWatching: (() => void) | undefined;
         try {
+            // Var requests have no deadline, and a starting window answers renderer RPC only after it has
+            // restored its pages. Restoring a board-backed page (an ssh:// file, a board tree) can need this
+            // very service, which needs its vars: waiting here would deadlock startup. Fail fast instead;
+            // the page shows a load error the user can retry once the window is up.
+            if (noDeadline && !this.context.isRendererReady()) {
+                throw new ServiceError("window-unavailable", "Persephone is still starting; try again in a moment.");
+            }
             const renderer = await getRenderer(abort.signal);
             abort.signal.throwIfAborted();
             if (!renderer || renderer.isDestroyed()) throw new ServiceError(noDeadline ? "window-unavailable" : "service-exited", "No renderer window is available.");

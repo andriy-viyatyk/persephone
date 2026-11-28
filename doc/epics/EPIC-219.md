@@ -83,6 +83,7 @@ Settled by Claude's recommendation; the user may override before the plans are w
 
 ## Concerns
 
+- **Board-backed pages restored at startup** (found 2026-11-28). Page restore runs before the window answers renderer RPC, so a restored `ssh://` file or SSH tree whose service needs its env vars deadlocked startup (blank window). Fixed by failing var requests fast with `window-unavailable` while the window is starting; the restored page then opens empty or with a listing error and needs a reload. Follow-up: restore board-backed content after the window is ready instead of during restore.
 - **Prompts inside a service request.** The first `persephone.var` call can block on the store-creation dialog or the
   decrypt prompt. US-2259 gives var requests no short deadline; `treeList` has no outer deadline, so the first listing waits
   under the generic Loading while the prompt (which names the env store) is open. Writes keep their 10 s deadline.
