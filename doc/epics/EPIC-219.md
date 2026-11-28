@@ -84,6 +84,8 @@ Settled by Claude's recommendation; the user may override before the plans are w
 ## Concerns
 
 - **Board-backed pages restored at startup** (found 2026-11-28). Page restore runs before the window answers renderer RPC, so a restored `ssh://` file or SSH tree whose service needs its env vars deadlocked startup (blank window). Fixed by failing var requests fast with `window-unavailable` while the window is starting; the restored page then opens empty or with a listing error and needs a reload. Follow-up: restore board-backed content after the window is ready instead of during restore.
+- **Folder auto-refresh for board trees** (found in BT-105 planning, 2026-11-28). Board tree providers have no watch route: `tree-provider-dispatch.ts` carries only `list`, `stat`, `mkdir`, `rename`, `delete`, and `ProxyTreeProvider` has no watch. BT-105 watches open remote *files* only; an open remote folder updates on refresh. Follow-up: a host task adding a tree watch route for board providers.
+- **Tree stays read-only after a service restart** (found in BT-104 verification). Root `readOnly` comes from the root listing; after the board service restarts, an open tree keeps showing no write actions until it is refreshed. Follow-up.
 - **Prompts inside a service request.** The first `persephone.var` call can block on the store-creation dialog or the
   decrypt prompt. US-2259 gives var requests no short deadline; `treeList` has no outer deadline, so the first listing waits
   under the generic Loading while the prompt (which names the env store) is open. Writes keep their 10 s deadline.

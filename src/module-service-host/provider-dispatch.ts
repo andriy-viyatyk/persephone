@@ -356,6 +356,13 @@ async function executeProviderRequest(lease: RendererLease, request: ValidatedPr
     if (typeof implementation.watch !== "function") {
         return providerFailure("provider-failed", `Provider "${request.type}" does not support watch().`);
     }
+    // Lease attach replays every watch intent, so a subscribe already in flight can arrive twice
+    // with one id. Replace the earlier provider watch, as statusSubscribe does, instead of leaking it.
+    const previous = lease.subscriptions.get(key);
+    if (previous) {
+        lease.subscriptions.delete(key);
+        try { previous.dispose(); } catch { /* A replaced watch is torn down best effort. */ }
+    }
     let disposer: (() => void) | { dispose(): void };
     try {
         disposer = implementation.watch(request.config, (event: unknown): void => {
