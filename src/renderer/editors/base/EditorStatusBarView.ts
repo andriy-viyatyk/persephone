@@ -9,6 +9,8 @@ import { ButtonView } from "../../uikit/Button/ButtonView";
 import { DividerView } from "../../uikit/Divider/DividerView";
 import { fillSlot, type SlotContent } from "../../uikit/shared/fill-slot";
 import { createIconElement } from "../../uikit/shared/slots";
+import { createBoardGlyphElement } from "../../components/icons/board-glyph-element";
+import { providerDeclarationFor } from "../../content/registry";
 import { SpacerView } from "../../uikit/Spacer/SpacerView";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import type { EditorModelInstance as EditorModel } from "./EditorModel";
@@ -34,6 +36,11 @@ export interface EditorStatusBarViewProps {
 interface ProviderMeta {
     label: string;
     createIcon: () => SVGElement;
+}
+
+interface BadgeMeta {
+    label: string;
+    createIcon: () => Element;
 }
 
 const PROVIDER_META: Record<string, ProviderMeta> = {
@@ -210,7 +217,7 @@ export class EditorStatusBarView extends VanillaView<EditorStatusBarViewProps> {
         this.badgeHost.replaceChildren();
         if (!pipe) return;
 
-        const meta = PROVIDER_META[pipe.provider.type];
+        const meta: BadgeMeta | undefined = PROVIDER_META[pipe.provider.type] ?? boardProviderMeta(pipe.provider.type);
         const isArchive = pipe.transformers.some((transformer) => transformer.type === "archive");
         if (!meta && !isArchive) return;
 
@@ -222,5 +229,16 @@ export class EditorStatusBarView extends VanillaView<EditorStatusBarViewProps> {
         if (meta) badge.append(meta.createIcon());
         if (isArchive) badge.append(createIconElement("archive", { width: 16, height: 16 }));
         this.badgeHost.append(badge);
+    };
+}
+
+/** A provider type a board declared: the board's own icon (or the generic board glyph) and name. */
+function boardProviderMeta(type: string): BadgeMeta | undefined {
+    const declaration = providerDeclarationFor(type);
+    if (!declaration?.boardRoot) return undefined;
+    const boardRoot = declaration.boardRoot;
+    return {
+        label: declaration.boardName ?? boardRoot,
+        createIcon: () => createBoardGlyphElement(boardRoot, 16),
     };
 }
