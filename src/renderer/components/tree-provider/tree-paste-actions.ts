@@ -97,7 +97,8 @@ export async function pasteTreeClipboardInto(
         }
         await targetCapability.assertAvailable();
         const sameTree = source.sourceIdentity === targetCapability.sourceIdentity;
-        await sourceCapability!.assertAvailable();
+        if (!sourceCapability) throw new Error(t("dialogs.treeTransferLiveSourceUnavailable"));
+        await sourceCapability.assertAvailable();
         const items = await verifyClipboardSource(source, sameTree ? targetProvider : source.provider);
         await assertBoardClipboardCurrent(source);
         const target = pasteTarget(targetProvider, targetPath);

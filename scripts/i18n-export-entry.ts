@@ -19,6 +19,9 @@ import { aboutCatalog } from "../src/shared/i18n/en/about";
 import { toolsCatalog } from "../src/shared/i18n/en/tools";
 import { uikitCatalog } from "../src/shared/i18n/en/uikit";
 import { logViewCatalog } from "../src/shared/i18n/en/logView";
+import { voiceTypingCatalog } from "../src/shared/i18n/en/voiceTyping";
+import { transcriptCatalog } from "../src/shared/i18n/en/transcript";
+import { translationCatalog } from "../src/shared/i18n/en/translation";
 import { englishCatalog } from "../src/shared/i18n/en";
 import { hashEnglishMessage } from "../src/shared/i18n/hash";
 import { messagePlaceholders } from "../src/shared/i18n/validate-pack";
@@ -42,6 +45,9 @@ const entryCatalogs = {
     tools: toolsCatalog,
     uikit: uikitCatalog,
     logView: logViewCatalog,
+    voiceTyping: voiceTypingCatalog,
+    transcript: transcriptCatalog,
+    translation: translationCatalog,
 };
 
 interface ExportEntry {

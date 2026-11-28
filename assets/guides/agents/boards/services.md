@@ -84,6 +84,22 @@ platform deadline. Only reads are exempt from the shared control-request cap; `s
 against it. `writeBinary()`, `watchSubscribe()`, and `watchUnsubscribe()` use the service request
 deadline. Cancellation releases pending requests, such as on page or frame teardown.
 
+For resources larger than the single-buffer limit, a provider may instead opt into transactional
+chunked writes. Set `writable: true` and implement all four methods on the registered provider:
+
+```js
+writeBegin(config, { signal })         // create a temporary destination; return an opaque handle
+writeChunk(handle, bytes, { signal })  // append one Uint8Array chunk, at most 1 MiB
+writeCommit(handle, { signal })        // atomically publish the completed destination
+writeAbort(handle)                     // remove temporary data after failure or cancellation
+```
+
+`writeBegin`, `writeChunk`, and `writeCommit` may be async. The host serializes session operations,
+associates each session with its originating renderer lease, and calls `writeAbort` when the session
+is cancelled or its lease closes. A service can have at most 16 open write sessions. If the
+provider does not supply all four methods with `writable: true`, it uses `writeBinary()` instead;
+that fallback is bounded to 256 MiB. Chunked writes use the shared provider-operation deadline.
+
 An implementation may also supply `status(config, emit)` to report transient provider status.
 Call `emit(snapshot)` with `{ state, text?, detail?, progress?, rate? }`, where `state` is
 `idle`, `connecting`, `active`, `done`, or `error`; progress is `{ loaded, total? }` in bytes and
@@ -108,8 +124,11 @@ refused. `list(config, path, { signal })` returns `{ items, truncated }`; each i
 and optional `size` and ISO `mtime`. Keep names to single path segments. `stat(config, path,
 { signal })` returns `{ exists, isDirectory, size?, mtime? }`. Optional `mkdir(config, path)`,
 `rename(config, oldPath, newPath)`, and `delete(config, path)` handlers add the matching Explorer
-actions. There is no tree search or cross-provider move API. Listing and stat requests support
+actions. There is no tree-search operation. Listing and stat requests support
 cancellation and have no timer deadline; mutations use the shared service-request deadline.
+The `list` result may also include `readOnly: true` for a folder. Return it on the root listing to
+make that connection's Explorer tree read-only; the host service must still enforce its own write
+permissions.
 
 From a board frame, `persephone.openTree({ type, config, rootPath, title? })` opens the Explorer on
 that tree. The caller must own the accepted declaration for `type`; `rootPath` is `/` or a valid

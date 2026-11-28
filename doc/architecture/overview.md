@@ -468,6 +468,12 @@ rootPath }` descriptor is persisted and `config` remains opaque to core; boards 
 connection references there rather than credentials. These operations use the existing
 module-service provider channel and its shared deadline policy.
 
+Tree listings may mark a folder `readOnly: true`; when that marker is returned for the tree root,
+the renderer disables writes for that connection's Explorer tree even if the provider type also
+supports writes. The service still enforces its own access rules. Cross-tree copy and move share
+the `TreeTransfer` engine; it streams content through provider pipes, uses transactional chunked
+writes when the destination supports them, and removes move sources only after complete copies.
+
 Custom-editor boards may use `editorKind: "stream-host"` to keep the platform-owned pipe in memory
 and receive `persephone.host.streamUrl()`. The resulting
 `board://<host>/__pipe/<pageId>` URL is served by main through the owning renderer, which applies

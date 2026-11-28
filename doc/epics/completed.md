@@ -1,3 +1,25 @@
+## EPIC-218 — Cross-tree transfer (remote trees phase 2)
+
+Completed 2026-11-28. Phase 2 of the [remote trees roadmap](../reviews/remote-trees-roadmap.md): copy and move between
+local and board trees, and board to board.
+
+- **Chunked writes (bridge 1.66.0):** optional `beginWrite` on content providers, carried on the existing provider
+  channel as `writeBegin`/`writeChunk`/`writeCommit`/`writeAbort` (1 MiB chunks, 10 s per-op deadline, 16 open
+  writes per service). The local provider writes a temporary file and renames on commit.
+- **`TreeTransfer`:** one engine for file and board trees; strict traversal, conflict callback (overwrite / skip /
+  keep both, apply to all), progress, `AbortSignal` cancellation, per-item outcomes. A move deletes a source only
+  after its copy completes.
+- **Explorer:** drag between trees (copy between trees, move within one; `Ctrl` copy, `Shift` move), OS files dropped
+  on a board tree, an in-app tree clipboard for copy/cut/paste across trees (board hrefs also go to the OS clipboard as
+  text), **Download to…** on board items, a cancellable progress dialog and a failure list.
+- **Read-only trees (US-2258):** a board marks a connection's tree read-only with `readOnly` on the root `treeList`
+  result; write menus, paste and drop targets disappear, Copy and Download to… stay.
+- **Menus:** OS-only items (Show in File Explorer, Open in New Window, Open with > Default App) appear only for paths
+  on disk.
+- **Tests:** the tree fixture gained chunked writes, a read-only connection and conflict/slow paths; 14 UI tests.
+  Dragging between trees is not UI-testable (`dragTo` refuses HTML5 drag) and stays a manual check, as does the
+  **Download to…** folder picker.
+
 ## EPIC-217 — Board tree providers (remote trees phase 1)
 
 Completed 2026-11-27. Phase 1 of the [remote trees roadmap](../reviews/remote-trees-roadmap.md): a board can supply a

@@ -258,7 +258,9 @@ export class TreeTransfer {
             if (!node || node.skipped) { known = false; return; }
             if (!isDirectory(node.entry.kind)) {
                 entries.push(node.entry);
-                if (!Number.isSafeInteger(node.entry.size) || node.entry.size! < 0) known = false;
+                if (typeof node.entry.size !== "number"
+                    || !Number.isSafeInteger(node.entry.size)
+                    || node.entry.size < 0) known = false;
             }
             node.children.forEach(visit);
         };
@@ -376,10 +378,11 @@ export class TreeTransfer {
             }
             if (!sourcePipe.provider.stat) throw new Error(t("dialogs.treeTransferSourceSizeUnavailable"));
             const stat = await sourcePipe.stat({ signal: options.signal });
-            if (!stat?.exists || !Number.isSafeInteger(stat.size) || stat.size! < 0) {
+            if (!stat?.exists || typeof stat.size !== "number"
+                || !Number.isSafeInteger(stat.size) || stat.size < 0) {
                 throw new Error(t("dialogs.treeTransferSourceSizeUnavailable"));
             }
-            const size = stat.size!;
+            const size = stat.size;
             if (size > MAX_BUFFERED_PIPE_BYTES && !sourcePipe.provider.createReadStream) {
                 throw new Error(t("dialogs.treeTransferBufferedLimit", { limit: MAX_BUFFERED_PIPE_BYTES }));
             }

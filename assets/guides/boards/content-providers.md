@@ -44,8 +44,9 @@ its declaration:
 Register the tree from the declared module service with `persephone.treeProviders.register()`.
 The type must be declared with `tree: true`; Persephone refuses tree registration for other types.
 `list()` and `stat()` are required. `list(config, path, { signal })` returns
-`{ items, truncated, readOnly? }`. Set `readOnly: true` when listing a folder on a connection
-that cannot be changed. Persephone applies the flag when it appears in the tree's root listing:
+`{ items, truncated, readOnly? }`; this becomes the board's `treeList` result. Set
+`readOnly: true` when listing a folder on a connection that cannot be changed. Persephone applies
+the flag when it appears in the tree's root listing:
 write menus, Cut, Paste, and drop targets are disabled for that tree, while Copy and Download to…
 remain available. The flag can change when the root is listed again, and the service must still
 reject writes for read-only connections. Each item has a unique single-segment `name`, its child `path`, an `href`
@@ -53,8 +54,9 @@ using one of the board's declared schemes, and an `isDirectory` flag; `size` and
 optional. `stat(config, path, { signal })` returns `{ exists, isDirectory, size?, mtime? }`.
 Optional `mkdir(config, path)`, `rename(config, oldPath, newPath)`, and `delete(config, path)`
 enable those Explorer actions. Listing and stat support cancellation and have no timer deadline;
-mutations use the service request deadline. Search and moving items between different trees are not
-available.
+mutations use the service request deadline. Search within a board-provided tree is not available.
+Persephone can transfer files between supported local and board trees when both providers expose
+the required read and write operations; a board tree without write support cannot be a destination.
 
 ```js
 persephone.treeProviders.register("example/mem", {
@@ -112,9 +114,11 @@ persephone.providers.register("example/mem", {
 
 A writable provider may optionally register all four methods `writeBegin(config, { signal })`,
 `writeChunk(handle, data, { signal })`, `writeCommit(handle, { signal })`, and `writeAbort(handle)`.
-Registering only part of this group is rejected. Keep `writable: true` and `writeBinary()` for
-existing buffered callers. A complete group advertises chunk-write capability; providers without
-it keep using buffered writes, which remain capped at 256 MiB.
+These are the board service methods; on the content-pipe side, Persephone exposes the capability as
+`beginWrite()`, which returns a session with `write(chunk)`, `commit()`, and `abort()` methods.
+Registering only part of the board-side group is rejected. Keep `writable: true` and `writeBinary()`
+for existing buffered callers. A complete group advertises chunk-write capability; providers
+without it keep using buffered writes, which remain capped at 256 MiB.
 
 The host supplies a private handle returned by `writeBegin`; it is never sent to the renderer. Each
 session accepts sequential awaited chunks of at most 1 MiB, including zero chunks for an empty file.

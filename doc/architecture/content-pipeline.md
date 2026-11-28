@@ -232,6 +232,22 @@ Transformers are walked in reverse order. Each receives the new data and a lazy 
 
 `writeText()` encodes the string first: `encodeString() → writeBinary()`.
 
+Board providers may opt into transactional chunked writes by declaring `writable: true` and
+implementing `writeBegin(config, { signal })`, `writeChunk(handle, bytes, { signal })`,
+`writeCommit(handle, { signal })`, and `writeAbort(handle)`. The renderer exposes these through
+`IProvider.beginWrite()`; each chunk is at most 1 MiB and a service may hold up to 16 open write
+sessions. Operations use the shared provider deadline and cancellation aborts the session. A
+provider that does not implement the complete chunked-write contract keeps the bounded
+`writeBinary()` path (up to 256 MiB).
+
+Cross-tree file copy and move are owned by `TreeTransfer` in
+`content/tree-providers/TreeTransfer.ts`. It walks and validates source trees, creates destination
+folders, copies pipe content, resolves conflicts, reports per-item outcomes, and deletes move
+sources only after their complete copy succeeds. Tree UI entry points use this engine for
+different-tree operations; same-tree rename and local-to-local copy keep their provider fast
+paths. When the target provider supports chunked writes, files stream through bounded reads and
+writes; otherwise the existing bounded write path applies.
+
 ### Conditional capabilities
 
 - `writable` -- true only if the provider is writable AND all transformers implement `write`.
