@@ -4,6 +4,15 @@ const FAIL_MESSAGE = "tree-test-read-only: writes are disabled for this connecti
 const connections = new Map();
 const failedNestedLists = new Set();
 const stagedWrites = new Set();
+let rootReadOnly = false;
+
+persephone.service.onRequest((message) => {
+    if (message?.op !== "set-root-read-only" || typeof message.value !== "boolean") {
+        throw new Error("tree-test-invalid-service-operation");
+    }
+    rootReadOnly = message.value;
+    return { readOnly: rootReadOnly };
+});
 
 function hrefFor(connection, path) {
     const encodedPath = path.split("/").map((part) => encodeURIComponent(part)).join("/");
@@ -60,7 +69,7 @@ function treeFor(connection) {
 }
 
 function assertWritable(config) {
-    if (config.conn === "ro") {
+    if (config.conn === "ro" || (config.conn === "a" && rootReadOnly)) {
         const error = new Error(FAIL_MESSAGE);
         error.code = "provider-read-only";
         throw error;
@@ -225,13 +234,14 @@ persephone.treeProviders.register(TYPE, {
                 const itemPath = `${path}/${name}`;
                 return { name, path: itemPath, href: hrefFor(config.conn, itemPath), isDirectory: false, size: 0 };
             });
-            return { items: items.slice(0, MAX_ITEMS), truncated: true, ...(config.conn === "ro" ? { readOnly: true } : {}) };
+            return { items: items.slice(0, MAX_ITEMS), truncated: true,
+                ...(config.conn === "ro" || (config.conn === "a" && rootReadOnly) ? { readOnly: true } : {}) };
         }
         const tree = treeFor(config.conn);
         const entries = directChildren(tree, path);
         return {
             items: treeItems(config, path, entries.slice(0, MAX_ITEMS)), truncated: entries.length > MAX_ITEMS,
-            ...(config.conn === "ro" ? { readOnly: true } : {}),
+            ...(config.conn === "ro" || (config.conn === "a" && rootReadOnly) ? { readOnly: true } : {}),
         };
     },
     stat(config, path) {

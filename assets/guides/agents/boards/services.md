@@ -35,7 +35,7 @@ available; `electron`, `app`, `BrowserWindow`, `webContents`, and `ipcMain` are 
 from the board root, including its `node_modules`. The environment is sanitized to the supervisor
 allowlist plus `PERSEPHONE_SERVICE=1`, `PERSEPHONE_BOARD_ROOT`, `PERSEPHONE_LOCALE`, and
 `PERSEPHONE_BOARD_DATA`. On Linux, the environment allowlist includes `PATH`, `HOME`, XDG config,
-data, cache, state and runtime directories, `TMPDIR`, locale, and timezone variables; Windows
+data, cache, state and runtime directories, `TMPDIR`, `SSH_AUTH_SOCK`, locale, and timezone variables; Windows
 uses its Windows system and user variables. The board data path is profile-scoped: the default
 Windows profile uses
 `%LOCALAPPDATA%\Persephone\board-data\<id>`, while Linux, named profiles, and test instances use
@@ -134,6 +134,15 @@ From a board frame, `persephone.openTree({ type, config, rootPath, title? })` op
 that tree. The caller must own the accepted declaration for `type`; `rootPath` is `/` or a valid
 provider path. Repeating the call for the same type, config, and root focuses the existing page.
 This bridge member requires version `1.65.0`.
+
+After a connection setting changes, call `persephone.refreshTree({ type, config, rootPath? })` to
+re-list every open Explorer tree owned by the caller's accepted provider with the same type and
+JSON config. Config matching ignores object key order; `rootPath`, when supplied, limits the refresh
+to that exact root. The returned number counts matching pages whose refresh was attempted, including
+provider listing errors. The call does not create pages, change the active page, or focus a window.
+Each refresh lists the tree root again, so a changed `readOnly` value updates the Explorer's write
+actions. The service must still enforce its current write setting on every mutation. This bridge
+member requires version `1.67.0`.
 
 The `service` permission controls whether the declared background program can run. The Trust board
 dialog and Board Info show the permission set granted to that board. The service runs as a normal

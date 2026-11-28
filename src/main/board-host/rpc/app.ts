@@ -6,7 +6,7 @@ import type { BoardCallRequest } from "../../../ipc/board-bridge/port-protocol";
 import type { OpenFileDialogParams, OpenFolderDialogParams, SaveFileDialogParams } from "../../../ipc/api-param-types";
 import { BoardGrantDeniedError } from "../../../shared/board/board-grant";
 import { isValidBoardTreePath } from "../../../shared/board/board-tree-path";
-import { isBoardOpenTreeRequest } from "../../../shared/board/board-tree-request";
+import { isBoardOpenTreeRequest, isBoardRefreshTreeRequest } from "../../../shared/board/board-tree-request";
 import { boardFileAccess } from "../../board-file-access";
 import { showOpenFileDialog, showOpenFolderDialog, showSaveFileDialog } from "../../native-dialogs";
 import { errMessage } from "../../../shared/utils";
@@ -19,6 +19,7 @@ import { toBytes } from "./file-bytes";
 import type { BoardBridgeConnection } from "../BoardBridgeConnection";
 import type { BoardJobRetention } from "../BoardJobRetention";
 import type { BoardRpcSlice } from "./types";
+import { refreshBoardTrees } from "./refresh-tree";
 
 const MAX_TS_PROJECTS_PER_FRAME = 8;
 
@@ -128,6 +129,12 @@ openTree: { handle: async (entry, rawRequest) => {
         await dependencies.hostRequest(entry, "openTree", { ...rawRequest, boardRoot: entry.root });
         return undefined;
     } },
+refreshTree: { handle: async (entry, rawRequest) => {
+        if (!isBoardRefreshTreeRequest(rawRequest)) {
+            throw new BoardRpcError("invalid-argument", "Invalid refreshTree request.");
+        }
+        return refreshBoardTrees(entry, rawRequest);
+    } },
 openBoard: { handle: async (entry, folder) => {
         if (typeof folder !== "string" || !folder.trim()) {
             throw new BoardRpcError("invalid-argument", "A non-empty board folder path is required.");
@@ -207,6 +214,7 @@ call: { handle: (entry, request) => runBoardCall(entry, request, dependencies) }
 export type AppDomainKeys =
     | "openRawLink"
     | "openTree"
+    | "refreshTree"
     | "openBoard"
     | "openFileDialog"
     | "saveFileDialog"

@@ -18,7 +18,8 @@ import { createLinkData } from "../../../shared/link-data";
 import { t } from "../../../shared/i18n/t";
 import { ui } from "../ui";
 import type { RendererRpcServer } from "../renderer-rpc";
-import { openBoardTreePage } from "./board-tree-page";
+import { openBoardTreePage, refreshBoardTreePages } from "./board-tree-page";
+import { isBoardRefreshTreeRequest } from "../../../shared/board/board-tree-request";
 import { isAcceptedBoardSchemeForRoot, schemeOf } from "../../content/scheme-registry";
 import { fpIsAbsolute } from "../../core/utils/file-path";
 
@@ -236,6 +237,12 @@ export function registerBoardHostRpc(server: RendererRpcServer): void {
         }
         await openBoardTreePage(pages, params, params.boardRoot);
         return null;
+    });
+    server.register("refreshTree", async (params): Promise<number> => {
+        if (!isBoardRefreshTreeRequest(params) || typeof params.boardRoot !== "string" || !params.boardRoot) {
+            throw new Error("Invalid board refreshTree request.");
+        }
+        return refreshBoardTreePages(pages, params, params.boardRoot);
     });
     server.register("openBoard", async (params): Promise<null> => {
         if (!params || typeof params.folder !== "string" || !params.folder.trim()) throw new Error("Invalid board openBoard request.");

@@ -9,6 +9,12 @@ export interface BoardOpenTreeRequest {
     title?: string;
 }
 
+export interface BoardRefreshTreeRequest {
+    type: string;
+    config?: BoardTreeJsonValue;
+    rootPath?: string;
+}
+
 /** Accept JSON data only, rejecting cycles, undefined values, class instances and non-finite numbers. */
 export function isBoardTreeJsonValue(value: unknown, ancestors = new Set<object>()): value is BoardTreeJsonValue {
     if (value === null || typeof value === "string" || typeof value === "boolean") return true;
@@ -31,4 +37,12 @@ export function isBoardOpenTreeRequest(value: unknown): value is BoardOpenTreeRe
         && isValidBoardTreePath(request.rootPath)
         && (request.config === undefined || isBoardTreeJsonValue(request.config))
         && (request.title === undefined || (typeof request.title === "string" && request.title.trim().length > 0));
+}
+
+export function isBoardRefreshTreeRequest(value: unknown): value is BoardRefreshTreeRequest {
+    if (value === null || typeof value !== "object" || Array.isArray(value)) return false;
+    const request = value as Record<string, unknown>;
+    return typeof request.type === "string" && request.type.trim().length > 0
+        && (request.rootPath === undefined || isValidBoardTreePath(request.rootPath))
+        && (request.config === undefined || isBoardTreeJsonValue(request.config));
 }
