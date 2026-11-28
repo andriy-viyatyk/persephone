@@ -21,6 +21,7 @@ import {
     whenProviderDeclarationsReady,
 } from "../registry";
 import { encodeCategoryLink } from "./tree-provider-link";
+import { pipeFromLink } from "../rebuild-pipe";
 import { boardTreeBackingStoreIdentity, boardTreeSourceIdentity } from "./tree-provider-identity";
 import type { TransferEntry, TreeTransferCapability } from "./tree-provider-capabilities";
 import {
@@ -129,6 +130,11 @@ export class ProxyTreeProvider implements ITreeProvider {
         const capabilities = moduleService.providerTreeCapabilities(accepted.boardRoot, this.type);
         return moduleService.providerWritable(accepted.boardRoot, this.type) === true
             || capabilities?.mkdir === true || capabilities?.rename === true || capabilities?.delete === true;
+    }
+
+    /** New File: an empty write through the board's content provider at a href resolved by `treeStat`. */
+    get addItem(): ITreeProvider["addItem"] {
+        return this.writable ? (item) => this.createEmptyFile(item) : undefined;
     }
 
     get mkdir(): ITreeProvider["mkdir"] {
@@ -454,6 +460,30 @@ export class ProxyTreeProvider implements ITreeProvider {
             throw new ProviderUnavailableError(this.type, providerDeclarationFor(this.type));
         }
         await this.request(accepted, operation, path, newPath);
+    }
+
+    private async createEmptyFile(item: Partial<ILink> & { href: string }): Promise<ILink> {
+        const path = this.hrefToPath.get(hrefKey(item.href));
+        if (!path) throw new Error(`Cannot create unknown board tree href "${item.href}".`);
+        if (!this.writable) throw new ProviderUnavailableError(this.type, providerDeclarationFor(this.type));
+        if ((await this.stat(path)).exists) throw new Error(t("editors.fileOrFolderAlreadyExists"));
+        const pipe = await pipeFromLink(item.href);
+        try {
+            if (pipe.transformers.length || !pipe.provider.writeBinary) {
+                throw new Error(t("dialogs.treeTransferWriteUnsupported"));
+            }
+            await pipe.writeBinary(Buffer.alloc(0));
+        } finally {
+            pipe.dispose();
+        }
+        const name = path.slice(path.lastIndexOf("/") + 1);
+        return {
+            href: item.href,
+            title: name,
+            category: path.slice(0, path.lastIndexOf("/")) || "/",
+            tags: this.extensionTags(name),
+            isDirectory: false,
+        };
     }
 
     private async deleteByHref(href: string): Promise<void> {

@@ -5,6 +5,7 @@ import { pasteTreeClipboardInto, reportTreePasteFailure } from "./tree-paste-act
 import { DialogButton } from "../../api/dialogs/dialog-buttons";
 import { t } from "../../../shared/i18n/t";
 import { joinTreeChild } from "./tree-path";
+import { treeTransferCapability } from "../../content/tree-providers/tree-provider-capabilities";
 
 export interface ItemCrudContext {
     provider: ITreeProvider;
@@ -22,6 +23,14 @@ export async function pasteIntoDir(context: ItemCrudContext, directory: string):
     }
 }
 
+/** A tree with a transfer capability addresses a not-yet-listed child by path (a board tree asks
+ *  its service for the href); others resolve it through their own link map. */
+async function newChildHref(provider: ITreeProvider, directory: string, name: string): Promise<string> {
+    const transfer = treeTransferCapability(provider);
+    if (!transfer) return provider.resolveLink(joinTreeChild(directory, name));
+    return transfer.resolveContentHref(transfer.joinChild(directory, name));
+}
+
 export async function createNewFile(context: ItemCrudContext, directory: string): Promise<void> {
     const { provider } = context;
     if (!provider.writable || !provider.addItem) return;
@@ -33,8 +42,8 @@ export async function createNewFile(context: ItemCrudContext, directory: string)
     if (inputResult?.button !== DialogButton.create || !inputResult.value.trim()) return;
 
     const name = inputResult.value.trim();
-    const href = provider.resolveLink(joinTreeChild(directory, name));
     try {
+        const href = await newChildHref(provider, directory, name);
         await provider.addItem({
             href,
             title: name,
