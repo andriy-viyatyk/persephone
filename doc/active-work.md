@@ -8,6 +8,10 @@ Overview of all active and planned epics and tasks.
 
 ## Active
 
+- **EPIC-219** — [SSH board (remote trees phase 3)](epics/EPIC-219.md)
+  - [ ] US-2259: Env vars in board services (`persephone.var` in module services, bridge 1.67.0)
+  - Board tasks BT-103 – BT-107 are tracked in persephone-boards `doc/active-work.md`
+
 ## Planned
 
 - *(no epic)*
