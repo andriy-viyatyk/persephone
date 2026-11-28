@@ -12,7 +12,7 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ## Version 5.0.24 (Upcoming)
 
-- **Boards can provide Explorer trees:** browse remote folders from SSH, FTP or Kudu boards, open their files in Persephone, transfer items between supported trees by drag and drop or copy/paste, and download board items to a local folder. Read-only trees remain available as copy sources.
+- **Boards can provide Explorer trees:** browse remote folders, open files in Persephone, transfer items between supported trees by drag and drop or copy/paste, and download board items to a local folder. Writable remote trees offer **New File**, and files opened through a board provider show its source icon in the editor status bar. Read-only trees remain available as copy sources.
 
 ---
 

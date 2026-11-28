@@ -57,6 +57,8 @@ enable those Explorer actions. Listing and stat support cancellation and have no
 mutations use the service request deadline. Search within a board-provided tree is not available.
 Persephone can transfer files between supported local and board trees when both providers expose
 the required read and write operations; a board tree without write support cannot be a destination.
+Writable board trees also offer **New File** in a folder's context menu. The board must support
+writing file content; a read-only tree does not offer the action.
 
 ```js
 persephone.treeProviders.register("example/mem", {

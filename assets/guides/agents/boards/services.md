@@ -58,6 +58,26 @@ Bridge 1.36.0. A board that depends on this service locale contract must set
 store it at `<boardRoot>/ui.log`; bundled boards store it at `<userData>/board-logs/<id>/ui.log`.
 The selected application profile determines `userData`.
 
+### Board environment variables from a service
+
+A host-managed service can read and update its board's own environment-variable namespace with
+`persephone.var`. It does not need the board page to be open:
+
+```js
+const token = await persephone.var.get("API_TOKEN");
+await persephone.var.set("API_TOKEN", token);
+const names = await persephone.var.keys();
+await persephone.var.delete("OLD_TOKEN");
+```
+
+These requests have no timer deadline because the first call may wait while the user creates the
+environment-variable file or unlocks it. If the user declines setup or the file remains locked, the
+call rejects with `error.code === "board-vars-declined"`; load or store failures reject with
+`error.code === "board-vars-unavailable"`. Handle these errors in the service's request flow. If a
+request arrives while Persephone is still starting, it fails promptly with
+`error.code === "window-unavailable"` so restoring a board-backed page cannot deadlock startup;
+the caller can retry after the window is ready. Raw-protocol services do not provide this API.
+
 For a resident backend tied to the visible page, `executeNode()` can also keep one long-lived
 script open and exchange JSON lines over stdin/stdout. This avoids starting a new child for each
 operation; use `setBoardBusy(true)` if it must survive a reload, then re-attach by `name` with

@@ -11,12 +11,13 @@ export async function refreshBoardTrees(
     const params = { ...request, boardRoot: entry.root };
     const caller = { webContents: entry.hostWebContents };
     const callerCount = await requestRenderer("refreshTree", params, caller);
-    const otherRenderers = openWindows.windows
-        .map((window) => window.window?.window)
-        .filter((window) => window && !window.isDestroyed()
-            && !window.webContents.isDestroyed()
-            && window.webContents !== entry.hostWebContents)
-        .map((window) => window!.webContents);
+    const otherRenderers = openWindows.windows.flatMap((windowData) => {
+        if (windowData.boardRoot || !windowData.window) return [];
+        const window = windowData.window.window;
+        if (window.isDestroyed() || window.webContents.isDestroyed()
+            || window.webContents === entry.hostWebContents) return [];
+        return [window.webContents];
+    });
     const counts = await Promise.all(otherRenderers.map((webContents) =>
         requestRenderer("refreshTree", params, { webContents }),
     ));

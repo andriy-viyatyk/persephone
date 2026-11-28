@@ -357,12 +357,15 @@
                 <button class="p-btn primary" data-test="probeStream">fetch a Range from this page</button>
                 <button class="p-btn primary" data-test="openContent">content.open mem://demo</button>
                 <button class="p-btn primary" data-test="openTree">open demo/mem tree</button>
+                <button class="p-btn primary" data-test="refreshTree">refresh demo/mem tree</button>
             </div>
             <p class="muted">
                 The first button opens <code>stream-fixture.stream-demo</code> through this board's
                 <code>editorKind: "stream-host"</code> association. The fourth button calls
                 <code>persephone.openTree()</code> for the same service-backed <code>demo/mem</code>
-                provider, which lists <code>demo.txt</code> in Explorer. On the stream-host page, the second button
+                provider, which lists <code>demo.txt</code> in Explorer. The fifth button calls
+                <code>persephone.refreshTree()</code> to re-list matching open trees without opening or focusing a page.
+                On the stream-host page, the second button
                 calls <code>persephone.host.streamUrl()</code> and sends <code>Range: bytes=0-31</code>.
                 The provider also implements <code>readRange</code>; the third button resolves the
                 same service-backed bytes through <code>persephone.content.open()</code> without a page.

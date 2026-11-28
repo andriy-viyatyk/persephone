@@ -1,6 +1,6 @@
 # Remote trees roadmap
 
-**Date:** 2026-11-27 · **Status:** accepted 2026-11-27; Phase 1 is [EPIC-217](../epics/EPIC-217.md) (completed 2026-11-27); Phase 2 is [EPIC-218](../epics/EPIC-218.md) (completed 2026-11-28); Phase 3 is [EPIC-219](../epics/EPIC-219.md) (active). Each
+**Date:** 2026-11-27 · **Status:** accepted 2026-11-27; Phase 1 is [EPIC-217](../epics/EPIC-217.md) (completed 2026-11-27); Phase 2 is [EPIC-218](../epics/EPIC-218.md) (completed 2026-11-28); Phase 3 is [EPIC-219](../epics/EPIC-219.md) (completed 2026-11-28; board publishes after 5.0.24). Each
 phase becomes one epic, created when the previous one closes.
 
 ## Goal

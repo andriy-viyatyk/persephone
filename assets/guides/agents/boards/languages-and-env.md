@@ -118,8 +118,11 @@ the namespace via `namespaceFor` rather than guessing the `author/name` string y
 ```js
 const server = await persephone.var.get("SNOWFLAKE_SERVER"); // this board's own namespace only
 await persephone.var.set("SNOWFLAKE_USER", value);            // a board may write its own settings
+const keys = await persephone.var.keys();                     // names in this board's namespace
+await persephone.var.delete("OLD_TOKEN");
 ```
 
 `persephone.var.*` is always scoped to the calling board — it can never read or write another
-board's namespace. All calls are async and can reject (not configured / locked / user declined);
-handle rejection gracefully (e.g. show a "configure your connection" prompt in the board's UI).
+board's namespace. `keys()` returns the same key-name list as `list()`. All calls are async and can
+reject (not configured / locked / user declined); handle rejection gracefully (e.g. show a
+"configure your connection" prompt in the board's UI).

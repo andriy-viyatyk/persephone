@@ -463,6 +463,11 @@
             await P.openTree({ type: "demo/mem", config: {}, rootPath: "/", title: "Demo service tree" });
             print("opened the demo/mem provider in Explorer");
         },
+        async refreshTree() {
+            header("persephone.refreshTree → demo/mem");
+            const refreshed = await P.refreshTree({ type: "demo/mem", config: {}, rootPath: "/" });
+            print(`refresh attempted for ${refreshed} matching Explorer page(s)`);
+        },
 
         // --- integration tier ----------------------------------------------
         async notify() {

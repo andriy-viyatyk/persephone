@@ -1,3 +1,26 @@
+## EPIC-219 — SSH board (remote trees phase 3)
+
+Completed 2026-11-28. Phase 3 of the [remote trees roadmap](../reviews/remote-trees-roadmap.md): an SSH board in
+persephone-boards (`boards/ssh`, BT-103..BT-107, see that repo's `doc/tasks/completed.md`) plus the host pieces it needs.
+The board publishes after the 5.0.24 release.
+
+- **Env vars in board services (US-2259, bridge 1.67.0):** service-side `persephone.var.get/set/delete/keys` in the
+  board's own namespace, answered by the renderer's `BoardEnvStore` with no short deadline (waits for the store
+  dialogs), coded `board-vars-declined` / `board-vars-unavailable` errors; page `var.delete` / `var.keys`.
+- **Host additions (US-2260):** page `persephone.refreshTree({ type, config, rootPath? })` re-lists the board's open
+  Explorer trees; Linux services receive `SSH_AUTH_SOCK`.
+- **Fixes found while building the board:** service var requests fail fast with `window-unavailable` while the window
+  is starting (a restored `ssh://` page deadlocked startup); tree root rows no longer offer OS-path menu items; board
+  trees offer **New File** (empty write through the board's content provider); a watch subscribe replayed on lease
+  attach no longer leaks the first provider watch; the editor status bar shows the owning board's icon for files opened
+  through a board provider.
+- **Board (persephone-boards):** saved connections with agent / key / password auth, trust-on-first-use host keys,
+  per-connection Allow changes (off by default), SFTP trees and editable files with staged writes, watched open files,
+  and an exec-channel fallback for servers without SFTP. Verified on `persephone-vm`; SSH-agent login not verified.
+- **Follow-ups (not tasks yet):** restore board-backed pages after the window is ready instead of opening them empty;
+  a tree watch route so open board folders auto-refresh; a tree stays read-only after its board service restarts until
+  refreshed.
+
 ## EPIC-218 — Cross-tree transfer (remote trees phase 2)
 
 Completed 2026-11-28. Phase 2 of the [remote trees roadmap](../reviews/remote-trees-roadmap.md): copy and move between
