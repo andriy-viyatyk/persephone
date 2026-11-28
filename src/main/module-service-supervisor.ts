@@ -35,6 +35,27 @@ import { ServiceTrustDirectory } from "./module-service/trust-directory";
 import { ServiceChannelBroker } from "./module-service/channel-broker";
 import type { ChannelDelivery } from "./channel-delivery";
 import { ModuleServiceProcess } from "./module-service/process";
+import { onWebContentsGone } from "./webcontents-lifetime";
+
+async function waitForBoardSettingsReady(ready: Promise<unknown>, contents: WebContents, signal?: AbortSignal): Promise<void> {
+    if (signal?.aborted) throw signal.reason ?? new ServiceError("window-unavailable");
+    await new Promise<void>((resolve, reject) => {
+        let settled = false;
+        const disposeGone = onWebContentsGone(contents, () => finish(new ServiceError("window-unavailable", "The renderer became unavailable.")), { events: ["destroyed", "render-process-gone"] });
+        const cleanup = (): void => { signal?.removeEventListener("abort", onAbort); disposeGone(); };
+        const finish = (error?: unknown): void => {
+            if (settled) return;
+            settled = true;
+            cleanup();
+            if (error !== undefined) reject(error);
+            else resolve();
+        };
+        const onAbort = (): void => finish(signal.reason ?? new ServiceError("window-unavailable"));
+        signal?.addEventListener("abort", onAbort, { once: true });
+        ready.then(() => finish(), (error: unknown) => finish(error));
+        if (signal?.aborted) onAbort();
+    });
+}
 
 class ModuleServiceSupervisor {
     private readonly records = new Map<string, ServiceRecord>();
@@ -284,20 +305,38 @@ class ModuleServiceSupervisor {
         return !!grant && BoardGrant.from(grant.permissions).allows("appScripting");
     }
 
-    private async selectBoardSettingsRenderer(excluded?: WebContents): Promise<WebContents | undefined> {
+    private async selectBoardSettingsRenderer(excluded?: WebContents, signal?: AbortSignal): Promise<WebContents | undefined> {
         const data = openWindows.windows.find((entry) => entry.window && !entry.window.window.isDestroyed()
             && !entry.window.window.webContents.isDestroyed() && entry.window.window.webContents !== excluded);
         if (!data?.window) return undefined;
-        if (data.whenReady) await data.whenReady;
+        if (signal?.aborted) throw signal.reason ?? new ServiceError("window-unavailable");
+        const contents = data.window.window.webContents;
+        if (data.whenReady) await waitForBoardSettingsReady(data.whenReady, contents, signal);
         if (data.window.window.isDestroyed() || data.window.window.webContents.isDestroyed()) return undefined;
-        if (data.window.window.webContents.isLoadingMainFrame()) {
-            await new Promise<void>((resolve) => {
-                data.window?.window.webContents.once("did-finish-load", (): void => resolve());
-                data.window?.window.webContents.once("destroyed", (): void => resolve());
+        if (contents.isLoadingMainFrame()) {
+            await new Promise<void>((resolve, reject) => {
+                const cleanup = (): void => {
+                    contents.removeListener("did-finish-load", onReady);
+                    contents.removeListener("did-fail-load", onLoadFailed);
+                    contents.removeListener("destroyed", onGone);
+                    contents.removeListener("render-process-gone", onGone);
+                    signal?.removeEventListener("abort", onAbort);
+                };
+                const onReady = (): void => { cleanup(); resolve(); };
+                const onLoadFailed = (): void => { cleanup(); resolve(); };
+                const onGone = (): void => { cleanup(); resolve(); };
+                const onAbort = (): void => { cleanup(); reject(signal?.reason ?? new ServiceError("window-unavailable")); };
+                contents.once("did-finish-load", onReady);
+                contents.once("did-fail-load", onLoadFailed);
+                contents.once("destroyed", onGone);
+                contents.once("render-process-gone", onGone);
+                signal?.addEventListener("abort", onAbort, { once: true });
+                if (signal?.aborted) onAbort();
             });
             if (data.window.window.isDestroyed() || data.window.window.webContents.isDestroyed()) return undefined;
         }
-        return data.window.window.webContents;
+        if (signal?.aborted) throw signal.reason ?? new ServiceError("window-unavailable");
+        return contents;
     }
 
     async openCapabilityChannel(boardRoot: string, consumer: string, consumerServiceRoot: string | undefined, openMessage: unknown,

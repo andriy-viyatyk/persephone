@@ -10,6 +10,7 @@ import { settings } from "../../../api/settings";
 import type { AppSettingsKey } from "../../../api/settings-schema";
 import { BoardFrameSession } from "./BoardFrameSession";
 import { BoardFrameEndpoint } from "./BoardFrameEndpoint";
+import { codedError } from "../../../../shared/coded-error";
 
 type HostSettingsMessage = { [K in keyof HostToBoardEvents]: {
     name: K;
@@ -41,10 +42,10 @@ export class SettingsAndVarsBridge {
         this.unsubscribeRetire = session.onRetire(() => this.dispose());
     }
 
-    async runVar<R>(method: "get" | "set" | "list" | "show", args: unknown[]): Promise<R> {
+    async runVar<R>(method: "get" | "set" | "list" | "show" | "delete" | "keys", args: unknown[], signal?: AbortSignal): Promise<R> {
         const namespace = await resolveBoardNamespace(this.boardRoot);
-        const reply = await resolveBoardVarRequest(namespace, method, args);
-        if (reply.error !== undefined) throw new Error(reply.error);
+        const reply = await resolveBoardVarRequest(namespace, method, args, signal);
+        if (reply.error !== undefined) throw codedError(reply.code ?? "board-vars-unavailable", reply.error);
         return reply.result as R;
     }
 

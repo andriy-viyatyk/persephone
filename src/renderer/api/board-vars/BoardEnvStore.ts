@@ -148,6 +148,19 @@ class BoardEnvStore {
         model.changeContent(JSON.stringify(next, null, 4));
         await model.saveFile();
     }
+
+    /** Remove one value from a namespace profile without changing any other profile. */
+    async delete(namespace: string, name: string, env?: string): Promise<void> {
+        const profile = env || DEFAULT_PROFILE;
+        if (this.parsed[namespace]?.[profile]?.[name] === undefined) return;
+        const model = this.model;
+        if (!model) throw new Error("Board vars store is not loaded");
+        const next: BoardVarsFile = JSON.parse(JSON.stringify(this.parsed));
+        delete next[namespace]?.[profile]?.[name];
+        this.parsed = next;
+        model.changeContent(JSON.stringify(next, null, 4));
+        await model.saveFile();
+    }
 }
 
 export const boardVars = new BoardEnvStore();

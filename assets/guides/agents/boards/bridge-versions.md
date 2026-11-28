@@ -6,6 +6,10 @@ summary: "Which bridge version added each persephone.* member and manifest field
 
 # Boards — bridge version history and compatibility
 
+Bridge `1.67.0` adds host-managed service access to a board's own environment-variable profile
+(`persephone.var.get/set/delete/keys`) and adds `persephone.var.delete()` and `persephone.var.keys()`
+to board pages. Page `keys()` matches `list()`; existing `list()` and `show()` remain available.
+
 Bridge `1.66.0` adds optional transactional chunked writes to host-service providers
 (`writeBegin`, `writeChunk`, `writeCommit`, `writeAbort`) and extends tree-provider `stat()` with
 optional link kind, content href (including for a missing destination), and directory deletion mode.

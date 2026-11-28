@@ -37,15 +37,15 @@ The user's requirement: the board **remembers connections, including their crede
 
 | Task | Repo | Title | Owner | Status |
 |------|------|-------|-------|--------|
-| US-2259 | persephone | **Env vars in board services.** `persephone.var.get/set/delete/keys` in the module-service API, scoped to the board's own namespace, answered by the renderer's `BoardEnvStore` through the board-settings route (service → main → `requestRenderer`). The request must wait for the store-creation dialog or the decrypt prompt (no short deadline), and reject cleanly when the user declines or no window is open. Bridge 1.67.0 + history line; `services.md` and `languages-and-env.md` guides | Codex (plan + implement), Claude review | Planned |
-| BT-103 | persephone-boards | **SSH board and connections page.** Scaffold `boards/ssh/` with `boards.createBoard`; page lists saved connections; add/edit/delete; fields: name, host, port, user, auth (agent / key file / password), key path, start folder, writable switch; secrets in separate vars; **Test connection** shows the host-key fingerprint and **Trust** stores it; **Open** calls `persephone.openTree`. Optional import of `~/.ssh/config` `Host` aliases to prefill the form | Codex (plan + implement), Claude review | Planned |
-| BT-104 | persephone-boards | **SSH service over SFTP.** Vendor `ssh2` as one committed bundle (no native add-ons, license copied). One session per connection, idle disconnect, reconnect on demand, strict host-key check against the trusted key. One `ssh:` content provider with `tree: true`: list/stat/read/readRange, chunked writes (temp name + rename on commit), mkdir/rename/delete only for writable connections, `readOnly` on the root listing otherwise | Codex (plan + implement), Claude review | Planned |
+| [US-2259](../tasks/US-2259-service-env-vars/README.md) | persephone | **Env vars in board services.** `persephone.var.get/set/delete/keys` in the module-service API, scoped to the board's own namespace, answered by the renderer's `BoardEnvStore` through the board-settings route (service → main → `requestRenderer`). The request must wait for the store-creation dialog or the decrypt prompt (no short deadline), and reject cleanly when the user declines or no window is open. Bridge 1.67.0 + history line; `services.md` and `languages-and-env.md` guides | Codex (plan + implement), Claude review | Implemented (unreviewed) |
+| [US-2260](../tasks/US-2260-ssh-host-additions/README.md) | persephone | **SSH board host additions.** Refresh caller-owned open Explorer trees and pass `SSH_AUTH_SOCK` to Linux services. Coordinate bridge 1.67.0 with US-2259. | Codex (plan + implement), Claude review | Planned |
+| BT-103 | persephone-boards | **SSH board and connections page.** Scaffold `boards/ssh/` with `boards.createBoard`; page lists saved connections; add/edit/delete; fields: name, host, port, user, auth (agent / key file / password), key path, start folder, writable switch; secrets in separate vars; **Test connection** sends the (possibly unsaved) form values to the board service, which connects once with the vendored `ssh2` and returns the SHA-256 host-key fingerprint; **Trust** stores it. BT-103 therefore also vendors `ssh2` and adds the service skeleton; **Open** calls `persephone.openTree`. Optional import of `~/.ssh/config` `Host` aliases to prefill the form | Codex (plan + implement), Claude review | Planned |
+| BT-104 | persephone-boards | **SSH service over SFTP.** Reads connections and secrets from env vars (US-2259). One session per connection, idle disconnect, reconnect on demand, strict host-key check against the trusted key. One `ssh:` content provider with `tree: true`: list/stat/read/readRange, chunked writes (temp name + rename on commit), mkdir/rename/delete only for writable connections, `readOnly` on the root listing otherwise | Codex (plan + implement), Claude review | Planned |
 | BT-105 | persephone-boards | **Watch by polling.** `watch` on an open remote file polls `stat` (size + mtime) on an interval while watched; stops when unwatched or the session drops | Codex (plan + implement), Claude review | Planned |
 | BT-106 | persephone-boards | **Exec-channel fallback.** When the server has no SFTP subsystem: listing and stat via `ls`/`stat` output, read via `cat`/`dd` ranges, writes via base64 chunks to a temp file + `mv`. Safe quoting of every path | Codex (plan + implement), Claude review | Planned |
 | BT-107 | persephone-boards | **Verification and release prep.** Run the exit criteria on `persephone-vm` (SFTP) and in a container with SFTP disabled; README, `WHATS-NEW.md`, screenshot with no personal data; `minAppVersion` set to the Persephone release that carries bridge 1.67.0 | Claude (runs on the VM), Codex fixes | Planned |
 
-**Order:** US-2259 → BT-103 → BT-104 → BT-105 → BT-106 → BT-107. BT-103 can start against the page-side
-`persephone.var` while US-2259 is under way.
+**Order:** US-2259 + US-2260 → BT-103 → BT-104 → BT-105 → BT-106 → BT-107. BT-103 does not need US-2259 (the page passes the form values for Test connection) and runs in parallel with it; BT-104 needs both.
 
 ## Epic-level decisions
 
@@ -84,8 +84,8 @@ Settled by Claude's recommendation; the user may override before the plans are w
 ## Concerns
 
 - **Prompts inside a service request.** The first `persephone.var` call can block on the store-creation dialog or the
-  decrypt prompt. US-2259 must give var requests no short deadline, and the tree's first listing should surface "waiting
-  for the env-variable store" rather than time out.
+  decrypt prompt. US-2259 gives var requests no short deadline; `treeList` has no outer deadline, so the first listing waits
+  under the generic Loading while the prompt (which names the env store) is open. Writes keep their 10 s deadline.
 - **Vendoring `ssh2`.** Its optional `cpu-features` native add-on must be left out; the pure-JS crypto path must load
   from a clean checkout outside any `node_modules` (repo rule).
 - **Exec fallback correctness.** `ls` output differs between GNU and BusyBox; parsing must use a fixed format

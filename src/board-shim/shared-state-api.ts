@@ -35,6 +35,8 @@ export function createSharedStateApi(deps: { hostFrame: HostFrameChannel }) {
                 get(name: string, env?: string): Promise<string | undefined> { return hostFrame.request("var.get", { name, ...(env === undefined ? {} : { env }) }); },
                 set(name: string, value: string, env?: string): Promise<void> { return hostFrame.request("var.set", { name, value, ...(env === undefined ? {} : { env }) }); },
                 list(env?: string): Promise<string[]> { return hostFrame.request("var.list", env === undefined ? {} : { env }); },
+                keys(env?: string): Promise<string[]> { return hostFrame.request("var.keys", env === undefined ? {} : { env }); },
+                delete(name: string, env?: string): Promise<void> { return hostFrame.request("var.delete", { name, ...(env === undefined ? {} : { env }) }); },
                 show(): Promise<void> { return hostFrame.request("var.show", {}); },
             },
         },

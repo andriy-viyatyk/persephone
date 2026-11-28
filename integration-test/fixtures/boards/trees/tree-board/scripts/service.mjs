@@ -33,6 +33,7 @@ function createSeed() {
     addFile("/Readme.md", "Uppercase sibling.\n");
     addFile("/readme.md", "Lowercase sibling.\n");
     addDirectory("/_test");
+    addDirectory("/_test/service-vars");
     addDirectory("/_test/slow");
     addDirectory("/_test/fail");
     addDirectory("/_test/fail/nested");
@@ -181,6 +182,35 @@ persephone.providers.register(TYPE, {
 persephone.treeProviders.register(TYPE, {
     async list(config, path, { signal }) {
         if (signal.aborted) throw new Error("tree-test-request-cancelled");
+        if (path === "/_test/service-vars") {
+            await new Promise((resolve) => setTimeout(resolve, 50));
+            let outcomes;
+            try {
+                const seed = await persephone.var.get("TREE_SERVICE_SEED");
+                await persephone.var.set("TREE_SERVICE_WRITTEN", "synthetic-service-value");
+                await persephone.var.delete("TREE_SERVICE_DELETE");
+                const names = await persephone.var.keys();
+                const foreign = await persephone.var.get("TREE_FOREIGN_ONLY");
+                outcomes = [
+                    ["seed-read", seed === "synthetic-seed"],
+                    ["set-written", names.includes("TREE_SERVICE_WRITTEN")],
+                    ["delete-removed", !names.includes("TREE_SERVICE_DELETE")],
+                    ["foreign-hidden", foreign === undefined],
+                ];
+            } catch (error) {
+                outcomes = [[error?.code === "board-vars-declined" ? "board-vars-declined" : "service-error", false]];
+            }
+            return {
+                items: outcomes.map(([outcome, passed]) => `${outcome}:${passed ? "ok" : "failed"}`).map((name) => ({
+                    name,
+                    path: `${path}/${name}`,
+                    href: hrefFor(config.conn, `${path}/${name}`),
+                    isDirectory: false,
+                    size: 0,
+                })),
+                truncated: false,
+            };
+        }
         if (path === "/_test/slow") await new Promise((resolve) => setTimeout(resolve, 1200));
         if (path === "/_test/fail/nested") {
             const key = `${config.conn}:${path}`;

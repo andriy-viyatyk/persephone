@@ -44,6 +44,7 @@ export interface RendererRpcMethods {
     unregisterTsProject: { params: { root: string; owner: string }; result: null };
     releaseTsProjects: { params: { owner: string }; result: null };
     serviceSettingsGet: { params: { boardRoot: string; id: string }; result: BoardServiceSettingValue };
+    serviceBoardVar: { params: { boardRoot: string; operation: "get" | "set" | "delete" | "keys"; args: unknown[] }; result: unknown };
     serviceSettingsSubscribe: { params: { boardRoot: string; subscriptionId: string }; result: null };
     serviceSettingsUnsubscribe: { params: { boardRoot: string; subscriptionId: string }; result: null };
     capabilityOpen: { params: BoundOpenDispatch; result: CapabilityOutcome };

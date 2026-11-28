@@ -3,7 +3,7 @@ import type { RendererRpcMethods } from "../../ipc/renderer-rpc";
 import type { ServiceMainMessage, ServiceParentMessage } from "../../ipc/module-service-channels";
 import { onWebContentsGone } from "../webcontents-lifetime";
 import { openWindows } from "../open-windows";
-import { requestRenderer } from "../renderer-rpc";
+import { requestRenderer, RENDERER_REQUEST_NO_TIMEOUT } from "../renderer-rpc";
 import { isCoded } from "../../shared/coded-error";
 import { errMessage } from "../../shared/utils";
 import { ServiceError, isStartedOrRunning, type ServiceRecord } from "./record";
@@ -20,11 +20,11 @@ export interface BoardSettingsSubscription {
 
 export interface BoardSettingsAdapterContext {
     isAllowed(record: ServiceRecord): boolean;
-    selectRenderer(excluded?: WebContents): Promise<WebContents | undefined>;
+    selectRenderer(excluded?: WebContents, signal?: AbortSignal): Promise<WebContents | undefined>;
 }
 
-type BoardSettingsRequest = Extract<ServiceMainMessage, { kind: "board-settings-get" | "board-settings-subscribe" | "board-settings-unsubscribe" }>;
-type SettingsMethod = "serviceSettingsGet" | "serviceSettingsSubscribe" | "serviceSettingsUnsubscribe";
+type BoardSettingsRequest = Extract<ServiceMainMessage, { kind: "board-settings-get" | "board-settings-subscribe" | "board-settings-unsubscribe" | "board-vars-request" }>;
+type SettingsMethod = "serviceSettingsGet" | "serviceSettingsSubscribe" | "serviceSettingsUnsubscribe" | "serviceBoardVar";
 
 export class ServiceBoardSettingsAdapter {
     private readonly aborts = new Map<ServiceRecord, Set<AbortController>>();
@@ -74,7 +74,7 @@ export class ServiceBoardSettingsAdapter {
     }
 
     private async handleRequest(record: ServiceRecord, process: ModuleServiceProcess, message: BoardSettingsRequest): Promise<void> {
-        const post = (kind: "board-settings-response" | "board-settings-subscribe-response" | "board-settings-unsubscribe-response",
+        const post = (kind: "board-settings-response" | "board-vars-response" | "board-settings-subscribe-response" | "board-settings-unsubscribe-response",
             payload: { result?: unknown; error?: { code: string; message: string } } = {}): void => {
             if (record.current !== process) return;
             try { process.postMessage({ kind, requestId: message.requestId, ...payload }); } catch { /* service exited */ }
@@ -83,6 +83,24 @@ export class ServiceBoardSettingsAdapter {
             if (typeof message.requestId !== "string" || !message.requestId) throw new ServiceError("service-error", "Malformed board settings request.");
             if (record.current !== process || !isStartedOrRunning(record) || record.stopRequested) throw new ServiceError("service-exited");
             if (!this.context.isAllowed(record)) throw new ServiceError("untrusted");
+            if (message.kind === "board-vars-request") {
+                const { operation, args } = message;
+                if (operation !== "get" && operation !== "set" && operation !== "delete" && operation !== "keys") {
+                    throw new ServiceError("service-error", "Malformed board environment variables request.");
+                }
+                const expected = operation === "set" ? 3 : operation === "keys" ? 1 : 2;
+                if (!Array.isArray(args) || args.length !== expected
+                    || (operation !== "keys" && typeof args[0] !== "string")
+                    || (operation === "set" && typeof args[1] !== "string")
+                    || args.some((value, index) => (operation === "set" ? index === 2 : operation === "get" || operation === "delete" ? index === 1 : index === 0) && value !== undefined && typeof value !== "string")) {
+                    throw new ServiceError("service-error", "Malformed board environment variables request.");
+                }
+                const result = await this.requestRenderer(record, process, "serviceBoardVar", {
+                    boardRoot: record.boardRoot, operation, args,
+                });
+                post("board-vars-response", { result });
+                return;
+            }
             if (message.kind === "board-settings-get") {
                 if (typeof message.id !== "string" || !message.id.trim()) throw new ServiceError("service-error", "Board setting id must be a non-empty string.");
                 const result = await this.requestRenderer(record, process, "serviceSettingsGet", { boardRoot: record.boardRoot, id: message.id.trim() });
@@ -113,29 +131,30 @@ export class ServiceBoardSettingsAdapter {
             post("board-settings-unsubscribe-response");
         } catch (error: unknown) {
             const serviceError = this.toServiceError(error);
-            const kind = message.kind === "board-settings-get" ? "board-settings-response"
+            const kind = message.kind === "board-vars-request" ? "board-vars-response" : message.kind === "board-settings-get" ? "board-settings-response"
                 : message.kind === "board-settings-subscribe" ? "board-settings-subscribe-response" : "board-settings-unsubscribe-response";
             post(kind, { error: { code: serviceError.code, message: serviceError.message } });
         }
     }
 
     private async requestRenderer<M extends SettingsMethod>(record: ServiceRecord, process: ModuleServiceProcess,
-        method: M, params: RendererRpcMethods[M]["params"], getRenderer: () => Promise<WebContents | undefined> | WebContents | undefined = () => this.context.selectRenderer()): Promise<RendererRpcMethods[M]["result"]> {
-        const deadlineAt = Date.now() + SERVICE_REQUEST_DEADLINE_MS;
+        method: M, params: RendererRpcMethods[M]["params"], getRenderer: (signal: AbortSignal) => Promise<WebContents | undefined> | WebContents | undefined = (signal) => this.context.selectRenderer(undefined, signal)): Promise<RendererRpcMethods[M]["result"]> {
+        const noDeadline = method === "serviceBoardVar";
+        const deadlineAt = noDeadline ? Number.POSITIVE_INFINITY : Date.now() + SERVICE_REQUEST_DEADLINE_MS;
         const abort = new AbortController();
         const controllers = this.aborts.get(record) ?? new Set<AbortController>();
         controllers.add(abort);
         this.aborts.set(record, controllers);
         let stopWatching: (() => void) | undefined;
         try {
-            const renderer = await getRenderer();
+            const renderer = await getRenderer(abort.signal);
             abort.signal.throwIfAborted();
-            if (!renderer || renderer.isDestroyed()) throw new ServiceError("service-exited", "No renderer window is available.");
+            if (!renderer || renderer.isDestroyed()) throw new ServiceError(noDeadline ? "window-unavailable" : "service-exited", "No renderer window is available.");
             if (record.current !== process) throw new ServiceError("service-exited", "The service has exited.");
             const remainingMs = deadlineAt - Date.now();
             if (remainingMs <= 0) throw new ServiceError("service-timeout", "Service request timed out.");
-            stopWatching = onWebContentsGone(renderer, () => abort.abort(new ServiceError("service-exited", "The renderer became unavailable.")), { repeat: true });
-            const result = await requestRenderer(method, params, { webContents: renderer }, remainingMs, abort.signal);
+            stopWatching = onWebContentsGone(renderer, () => abort.abort(new ServiceError(noDeadline ? "window-unavailable" : "service-exited", "The renderer became unavailable.")), { repeat: true });
+            const result = await requestRenderer(method, params, { webContents: renderer }, noDeadline ? RENDERER_REQUEST_NO_TIMEOUT : remainingMs, abort.signal);
             if (record.current !== process) throw new ServiceError("service-exited", "The service has exited.");
             return result;
         } catch (error: unknown) { throw this.toServiceError(error); }
@@ -150,7 +169,7 @@ export class ServiceBoardSettingsAdapter {
         if (error instanceof ServiceError) return error;
         if (isCoded(error)) {
             if (error.code === "timeout") return new ServiceError("service-timeout", "Service request timed out.");
-            if (error.code === "window-unavailable") return new ServiceError("service-exited", errMessage(error, "Renderer is unavailable."));
+            if (error.code === "window-unavailable") return new ServiceError("window-unavailable", errMessage(error, "Renderer is unavailable."));
             if (["method-not-found", "invalid-params", "cancelled"].includes(error.code)) return new ServiceError("service-error", errMessage(error));
             return new ServiceError(error.code, errMessage(error));
         }

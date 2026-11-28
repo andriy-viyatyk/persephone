@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { test } from "../../../lib/context.mjs";
 import { closeBoardPage, fixtureBoard, openBoardPage, resetBoardFile, trustFixtureBoard, untrustBoard } from "../../helpers/boards.mjs";
+import { createStore, restoreStore } from "../../editors/env-vars/helpers.mjs";
 
 const POSITIVE_BOARD = "bridge/bridge-board";
 const DENIAL_BOARD = "bridge/no-app-board";
@@ -210,6 +211,36 @@ export default [
             await closeBoardPage(ctx, page?.id);
             await untrustBoard(ctx, root);
             try { await ctx.app.settings.set("board-vars.file", originalPath); } catch { /* Cleanup must not mask the test result. */ }
+        }
+    }),
+
+    test("board var delete and keys preserve list compatibility", async (ctx) => {
+        const root = fixtureBoard(ctx, POSITIVE_BOARD);
+        const store = await createStore(ctx, "boards/bridge", "page-vars.json");
+        let page;
+        let namespace;
+        try {
+            namespace = await ctx.app.boardVars.namespaceFor(root);
+            await ctx.app.boardVars.set(namespace, "PAGE_DELETE_FIXTURE", "synthetic-value");
+            await trustFixtureBoard(ctx, root);
+            page = await openBoardPage(ctx, root);
+            const result = await page.editor.evaluate(`async () => {
+                const keys = await window.persephone.var.keys();
+                const list = await window.persephone.var.list();
+                await window.persephone.var.delete("PAGE_DELETE_FIXTURE");
+                await window.persephone.var.delete("PAGE_MISSING_FIXTURE");
+                return { keys, list, afterKeys: await window.persephone.var.keys(), afterList: await window.persephone.var.list() };
+            }`);
+            ctx.expect(result.keys).toContain("PAGE_DELETE_FIXTURE");
+            ctx.expect(result.list).toEqual(result.keys);
+            ctx.expect(result.afterKeys).toEqual(result.afterList);
+            ctx.expect(result.afterKeys).not.toContain("PAGE_DELETE_FIXTURE");
+            ctx.expect((await ctx.app.boardVars.get(namespace, "PAGE_DELETE_FIXTURE")) ?? undefined).toBe(undefined);
+        } finally {
+            await closeBoardPage(ctx, page?.id);
+            await untrustBoard(ctx, root);
+            await restoreStore(ctx, store);
+            await ctx.app.fs.delete(store.filePath).catch(() => undefined);
         }
     }),
 ];

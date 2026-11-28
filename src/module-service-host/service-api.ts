@@ -68,6 +68,12 @@ export interface TreeProviderImplementationDeclaration {
 
 export interface PersephoneHostApi {
     settings?: { get(id: string): Promise<string | boolean | number>; onChange(callback: (change: { id: string; value: string | boolean | number }) => void): () => void };
+    var?: {
+        get(name: string, env?: string): Promise<string | undefined>;
+        set(name: string, value: string, env?: string): Promise<void>;
+        delete(name: string, env?: string): Promise<void>;
+        keys(env?: string): Promise<string[]>;
+    };
     storage?: { get(key: unknown): Promise<unknown>; set(key: unknown, value: unknown): Promise<unknown>; delete(key: unknown): Promise<unknown>; keys(): Promise<unknown> };
     providers?: { register(type: string, implementation: unknown): void };
     treeProviders?: { register(type: string, implementation: TreeProviderImplementationDeclaration): void };
@@ -108,6 +114,17 @@ export function createServiceApi(dependencies: {
             if (kind !== "board-settings-get" && "subscriptionId" in fields) return { kind, requestId, subscriptionId: fields.subscriptionId };
             throw new TypeError("Invalid board settings request.");
         });
+    }
+
+    function boardVarRequest(operation: "get" | "set" | "delete" | "keys", args: unknown[]): Promise<unknown> {
+        if (dependencies.protocolMode() === "raw") throw new Error("Board environment variables require the host-managed service API.");
+        return dependencies.requests.settings.request((requestId): Extract<ServiceMainMessage, { kind: "board-vars-request" }> => ({
+            kind: "board-vars-request", requestId, operation, args,
+        }), { noDeadline: true });
+    }
+
+    function isStringArray(value: unknown): value is string[] {
+        return Array.isArray(value) && value.every((entry: unknown) => typeof entry === "string");
     }
 
     function subscribeBoardSettings(callback: (change: { id: string; value: string | boolean | number }) => void): () => void {
@@ -184,6 +201,29 @@ export function createServiceApi(dependencies: {
             },
             onChange: subscribeBoardSettings,
         },
+        var: {
+            get(name: string, env?: string): Promise<string | undefined> {
+                return boardVarRequest("get", [String(name ?? ""), env]).then((value: unknown): string | undefined => {
+                    if (value === undefined) return undefined;
+                    if (typeof value !== "string") throw codedError("service-error", "Board variable result must be a string or undefined.");
+                    return value;
+                });
+            },
+            async set(name: string, value: string, env?: string): Promise<void> {
+                const result = await boardVarRequest("set", [String(name ?? ""), String(value ?? ""), env]);
+                if (result !== undefined) throw codedError("service-error", "Board variable set result must be void.");
+            },
+            async delete(name: string, env?: string): Promise<void> {
+                const result = await boardVarRequest("delete", [String(name ?? ""), env]);
+                if (result !== undefined) throw codedError("service-error", "Board variable delete result must be void.");
+            },
+            keys(env?: string): Promise<string[]> {
+                return boardVarRequest("keys", [env]).then((value: unknown) => {
+                    if (!isStringArray(value)) throw codedError("service-error", "Board variable keys result must be a string array.");
+                    return value;
+                });
+            },
+        },
         storage: {
             get: (key: unknown): Promise<unknown> => dependencies.requests.storage.request((requestId): Extract<ServiceMainMessage, { kind: "storage-request" }> => ({ kind: "storage-request", requestId, operation: "get", args: [key] })),
             set: (key: unknown, value: unknown): Promise<unknown> => dependencies.requests.storage.request((requestId): Extract<ServiceMainMessage, { kind: "storage-request" }> => ({ kind: "storage-request", requestId, operation: "set", args: [key, value] })),
@@ -250,6 +290,7 @@ function installServiceApi(api: PersephoneHostApi): PersephoneHostApi {
     const globalWithPersephone = globalThis as typeof globalThis & { persephone?: PersephoneHostApi };
     const persephone = globalWithPersephone.persephone ?? {};
     persephone.settings = api.settings;
+    persephone.var = api.var;
     persephone.storage = api.storage;
     persephone.providers = api.providers;
     persephone.treeProviders = api.treeProviders;

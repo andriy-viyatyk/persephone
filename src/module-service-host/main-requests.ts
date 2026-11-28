@@ -6,7 +6,7 @@ import type { ServiceMainMessage, ServiceParentMessage } from "../ipc/module-ser
 import { isRecord } from "./validation";
 
 type MainRequestMessage = Extract<ServiceMainMessage, {
-    kind: "storage-request" | "mcp-endpoint-request" | "board-settings-get" | "board-settings-subscribe" | "board-settings-unsubscribe"
+    kind: "storage-request" | "mcp-endpoint-request" | "board-settings-get" | "board-settings-subscribe" | "board-settings-unsubscribe" | "board-vars-request"
 }>;
 
 interface MainResponseMessage {
@@ -33,12 +33,12 @@ export class MainRequestFamily {
 
     public constructor(private readonly options: MainRequestFamilyOptions) {}
 
-    public async request(createMessage: (requestId: string) => MainRequestMessage): Promise<unknown> {
+    public async request(createMessage: (requestId: string) => MainRequestMessage, options: { noDeadline?: boolean } = {}): Promise<unknown> {
         await this.options.configReady;
         if (this.pending.size >= MAX_OUTSTANDING_REQUESTS_PER_SERVICE) {
             throw codedError("service-busy", "Service is busy.");
         }
-        const { id: requestId, promise } = this.pending.create(CAPABILITY_DEFAULT_TIMEOUT_MS, undefined, {
+        const { id: requestId, promise } = this.pending.create(options.noDeadline ? 0 : CAPABILITY_DEFAULT_TIMEOUT_MS, undefined, {
             timeoutError: (): Error & { code: "service-timeout" } => codedError("service-timeout", this.options.timeoutMessage),
         });
         try {
@@ -69,7 +69,7 @@ export class MainRequestFamily {
 }
 
 type MainResponseKind = Extract<ServiceParentMessage, {
-    kind: "storage-response" | "mcp-endpoint-response" | "board-settings-response" | "board-settings-subscribe-response" | "board-settings-unsubscribe-response"
+    kind: "storage-response" | "mcp-endpoint-response" | "board-settings-response" | "board-vars-response" | "board-settings-subscribe-response" | "board-settings-unsubscribe-response"
 }>["kind"];
 
 interface MainResponsePolicy {
@@ -83,6 +83,7 @@ const RESPONSE_POLICIES: Readonly<Record<MainResponseKind, MainResponsePolicy>> 
     "storage-response": { family: "storage", failureFallback: "Service storage request failed.", hasError: (response): boolean => "error" in response },
     "mcp-endpoint-response": { family: "mcp", failureFallback: "MCP endpoint request failed.", hasError: (response): boolean => Boolean(response.error) },
     "board-settings-response": { family: "settings", failureFallback: "Board settings request failed.", hasError: (response): boolean => Boolean(response.error) },
+    "board-vars-response": { family: "settings", failureFallback: "Board environment variables request failed.", hasError: (response): boolean => Boolean(response.error) },
     "board-settings-subscribe-response": { family: "settings", failureFallback: "Board settings subscription failed.", hasError: (response): boolean => Boolean(response.error), successValue: (): undefined => undefined },
     "board-settings-unsubscribe-response": { family: "settings", failureFallback: "Board settings subscription failed.", hasError: (response): boolean => Boolean(response.error), successValue: (): undefined => undefined },
 });

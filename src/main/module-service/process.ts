@@ -16,7 +16,7 @@ function delay(milliseconds: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
 
-type BoardSettingsMessage = Extract<ServiceMainMessage, { kind: "board-settings-get" | "board-settings-subscribe" | "board-settings-unsubscribe" }>;
+type BoardSettingsMessage = Extract<ServiceMainMessage, { kind: "board-settings-get" | "board-settings-subscribe" | "board-settings-unsubscribe" | "board-vars-request" }>;
 type CapabilityClientMessage = Extract<ServiceMainMessage, { kind: "capability-client-discover" | "capability-client-resolve" | "capability-client-invoke" | "capability-client-cancel" }>;
 
 export interface ModuleServiceProcessContext {
@@ -168,6 +168,7 @@ export class ModuleServiceProcess {
             case "board-settings-get":
             case "board-settings-subscribe":
             case "board-settings-unsubscribe":
+            case "board-vars-request":
                 this.context.boardSettings(this.record, this, message);
                 return;
             case "channel-ended":

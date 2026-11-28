@@ -67,6 +67,8 @@ export interface BoardToHostRequests {
     "var.get": FrameMethod<{ name: string; env?: string }, string | undefined>;
     "var.set": FrameMethod<{ name: string; value: string; env?: string }, void>;
     "var.list": FrameMethod<{ env?: string }, string[]>;
+    "var.keys": FrameMethod<{ env?: string }, string[]>;
+    "var.delete": FrameMethod<{ name: string; env?: string }, void>;
     "var.show": FrameMethod<NoPayload, void>;
     "settings.get": FrameMethod<{ id: string }, string | number | boolean>;
     "pageState.get": FrameMethod<{ key: string }, string | undefined>;

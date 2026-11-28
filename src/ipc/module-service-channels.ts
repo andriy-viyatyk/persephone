@@ -70,6 +70,7 @@ export const STOP_REASON_LEASE_REASON: Readonly<Record<ServiceStopReason, Render
     quit: "quit",
 };
 export type ServiceStorageOperation = "get" | "set" | "delete" | "keys";
+export type ServiceBoardVarOperation = "get" | "set" | "delete" | "keys";
 export type ServiceErrorPayload = WireError;
 export type ModuleServicePortResult = { ok: true } | { ok: false; error: ServiceErrorPayload };
 export interface ServiceHostConfig {
@@ -145,6 +146,7 @@ export type ServiceParentMessage =
     | { kind: "storage-response"; requestId: string; result?: unknown; error?: unknown }
     | { kind: "mcp-endpoint-response"; requestId: string; result?: unknown; error?: ServiceErrorPayload }
     | { kind: "board-settings-response"; requestId: string; result?: unknown; error?: ServiceErrorPayload }
+    | { kind: "board-vars-response"; requestId: string; result?: unknown; error?: ServiceErrorPayload }
     | { kind: "board-settings-subscribe-response"; requestId: string; error?: ServiceErrorPayload }
     | { kind: "board-settings-unsubscribe-response"; requestId: string; error?: ServiceErrorPayload }
     | { kind: "board-settings-changed"; subscriptionId: string; id: string; value: unknown };
@@ -169,6 +171,7 @@ export type ServiceMainMessage =
     }
     | { kind: "mcp-endpoint-request"; requestId: string; operation: "issue" | "revoke"; token?: string }
     | { kind: "board-settings-get"; requestId: string; id: string }
+    | { kind: "board-vars-request"; requestId: string; operation: ServiceBoardVarOperation; args: unknown[] }
     | { kind: "board-settings-subscribe"; requestId: string; subscriptionId: string }
     | { kind: "board-settings-unsubscribe"; requestId: string; subscriptionId: string }
     | { kind: "channel-ended"; channelId: string };

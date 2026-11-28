@@ -196,6 +196,16 @@ export class BoardHostRouter {
                     handle: ({ env }) => this.features.settingsBridge.runVar<string[]>("list", [env]),
                 }
             ),
+            "var.keys": request(
+                "var.keys",
+                { kind: "trusted" },
+                { handle: ({ env }) => this.features.settingsBridge.runVar<string[]>("keys", [env]) }
+            ),
+            "var.delete": request(
+                "var.delete",
+                { kind: "trusted" },
+                { handle: ({ name, env }) => this.features.settingsBridge.runVar<void>("delete", [name, env]) }
+            ),
             "var.show": request(
                 "var.show",
                 { kind: "trusted" },

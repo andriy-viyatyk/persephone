@@ -1,5 +1,6 @@
 import { registerBoardHostRpc } from "./boards/board-host-rpc";
 import { registerBoardServiceSettingsRpc } from "./board-service-settings";
+import { registerBoardServiceVarsRpc } from "./board-service-vars";
 import { registerMcpCallRpc } from "./mcp/mcp-call-rpc";
 import { rendererRpc } from "./renderer-rpc";
 import { registerCapabilityOpenRpc } from "./capabilities/open-dispatch-server";
@@ -12,6 +13,7 @@ export function initRendererRpc(): void {
     registerMcpCallRpc(rendererRpc);
     registerBoardHostRpc(rendererRpc);
     registerBoardServiceSettingsRpc(rendererRpc);
+    registerBoardServiceVarsRpc(rendererRpc);
     registerCapabilityOpenRpc(rendererRpc);
     rendererRpc.init();
 }
