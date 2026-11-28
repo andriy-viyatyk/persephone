@@ -14,8 +14,24 @@ import { installTestModeMediaCapture } from "./test-mode/media-capture";
 import { redirectTestInstanceLocalAppData } from "./test-mode/local-app-data";
 import { installClientCertificatePolicy } from "./client-certificate-policy";
 
+/**
+ * A SIGTERM sent to the whole process group (`systemctl stop`, session logout, `pkill`) kills the
+ * GPU process and the zygote while the quit flow below is still running. Chromium then relaunches
+ * the GPU process, every launch fails, it runs out of fallback modes and aborts the browser with
+ * "GPU process isn't usable. Goodbye." (SIGILL core dump, US-2242). Lifting the crash limit once
+ * quitting has started stops that abort; Chromium reads the switch at crash time. It stays off
+ * while running, where the limit is what moves a broken GPU driver to software rendering.
+ */
+function liftGpuCrashLimitForQuit(): void {
+    if (app.commandLine.hasSwitch("disable-gpu-process-crash-limit")) return;
+    app.commandLine.appendSwitch("disable-gpu-process-crash-limit");
+}
+
 export function setupMainProcess(): void {
-    app.on("before-quit", () => { openWindows.doQuit = true; });
+    app.on("before-quit", () => {
+        openWindows.doQuit = true;
+        liftGpuCrashLimitForQuit();
+    });
     let testInstance: ReturnType<typeof parseTestInstanceOptions>["options"];
     try { testInstance = parseTestInstanceOptions(process.argv.slice(process.defaultApp ? 2 : 1)).options; }
     catch (error) { console.error(error); app.exit(1); return; }

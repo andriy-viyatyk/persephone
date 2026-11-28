@@ -8,12 +8,12 @@ Overview of all active and planned epics and tasks.
 
 ## Active
 
-*(none)*
+- *(no epic)*
+  - [ ] US-2242: Packaged Linux build: SIGILL on a whole-group SIGTERM. Cause: `systemctl stop` / logout kills the GPU process and zygote while the graceful quit runs; Chromium relaunches the GPU process, every launch fails, and it aborts with `FATAL gpu_data_manager_impl_private.cc:417 GPU process isn't usable. Goodbye.` (`ud2`, not a real illegal instruction). Fix: `src/main/main-setup.ts` appends `disable-gpu-process-crash-limit` at `before-quit` only. VM repro on 5.0.23: 4/5 crashed before, 0/8 with the fix in a patched copy. The earlier startup crash under `--app` (boards/bridge) had no surviving log and is not covered
 
 ## Planned
 
 - *(no epic)*
-  - [ ] US-2242: Packaged Linux build: intermittent main-process SIGILL. Seen twice in EPIC-216's exit run: once when systemd stopped every app process at once, and once at the start of the `boards/bridge` module under `--app` (GdkPixbuf "loaders could not be found" warnings just before). A targeted rerun passed 18/18. Seen again 2026-11-27 with the released 5.0.23 `.deb` on `systemctl --user stop` (SIGTERM) of an idle instance; that report is kept in persephone-vm at `~/crash-evidence/sigill-on-sigterm-2026-11-27.crash`. Get a symbolized stack (`/var/crash/_opt_persephone_persephone.1000.crash`, `apport-retrace`) before guessing
   - [ ] US-2241: "Start Mneme" on the Mneme page starts the sidecar but leaves the page "Disconnected" while `mneme.enabled` is false (the shared connection follows only the setting; `MnemeConfigView` `mneme-start` → `restartMneme`). Found in the EPIC-216 exit run, all platforms; decide whether Start should also enable the setting
   - [ ] [US-2139: Board hotkeys](tasks/US-2139-board-hotkeys/README.md) — recorded idea, not investigated: a board declares an action with a default hotkey, the user can rebind it, and it works with no board page open
 
