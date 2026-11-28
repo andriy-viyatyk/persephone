@@ -96,8 +96,8 @@ implement the matching type inside the module service with
 `persephone.providers.register(type, implementation)`. This registration is service-only because
 the implementation contains functions that cannot cross the board frame's structured-clone RPC.
 The implementation supplies `readBinary(config)` and may supply `readRange(config, range)`,
-`writeBinary(config, data)`, `stat(config)`, `status(config, emit)`, and `watch(config, onChange)`;
-`status` and `watch` return disposers. `readRange` is optional: when present, the provider receives
+`writeBinary(config, data)`, `stat(config)`, `status(config, emit)`, and content `watch(config, onChange)`;
+`status` and content `watch` return disposers. `readRange` is optional: when present, the provider receives
 bounded ranged pulls (at most 1 MiB per call) as `Uint8Array` results; when absent, the pipe falls back to whole-resource
 `readBinary()` buffering, capped at 256 MiB. `readBinary()`, `readRange()`, and `stat()` have no
 platform deadline. Only reads are exempt from the shared control-request cap; `stat()` still counts
@@ -136,33 +136,43 @@ permission flag. The service requires `service: true`.
 
 ### Tree providers
 
-Add `"tree": true` to a `contentProviders` entry to make the same provider type available to the
-Explorer. Register tree handlers in the module service with
-`persephone.treeProviders.register(type, implementation)`. A type without the manifest flag is
-refused. `list(config, path, { signal })` returns `{ items, truncated }`; each item has a unique
-`name`, its child `path`, an `href` in one of the board's declared schemes, an `isDirectory` flag,
-and optional `size` and ISO `mtime`. Keep names to single path segments. `stat(config, path,
-{ signal })` returns `{ exists, isDirectory, size?, mtime? }`. Optional `mkdir(config, path)`,
-`rename(config, oldPath, newPath)`, and `delete(config, path)` handlers add the matching Explorer
-actions. There is no tree-search operation. Listing and stat requests support
-cancellation and have no timer deadline; mutations use the shared service-request deadline.
-The `list` result may also include `readOnly: true` for a folder. Return it on the root listing to
-make that connection's Explorer tree read-only; the host service must still enforce its own write
-permissions.
+Add `"tree": true` to a `contentProviders` entry and register handlers in the module service with
+`persephone.treeProviders.register(type, implementation)`. `list(config, path, { signal })` and
+`stat(config, path, { signal })` are required; optional `mkdir`, `rename`, and `delete` enable
+Explorer actions. Items have a unique single-segment name, child path, declared-scheme href, and
+directory flag. There is no tree-search operation. Listing and stat support cancellation without a
+timer deadline; mutations use the shared service-request deadline. Root `list()` may return
+`readOnly: true`; the board service must still enforce its write permissions. See the
+[content-provider guide](../../boards/content-providers.md#browse-a-board-provided-tree) for the
+full result and transfer contract.
 
-From a board frame, `persephone.openTree({ type, config, rootPath, title? })` opens the Explorer on
-that tree. The caller must own the accepted declaration for `type`; `rootPath` is `/` or a valid
-provider path. Repeating the call for the same type, config, and root focuses the existing page.
-This bridge member requires version `1.65.0`.
+A tree implementation may optionally provide
+`watch?(config: Record<string, unknown>, path: string, onChange: (event: unknown) => void): () => void`,
+with a synchronous disposer:
 
-After a connection setting changes, call `persephone.refreshTree({ type, config, rootPath? })` to
-re-list every open Explorer tree owned by the caller's accepted provider with the same type and
-JSON config. Config matching ignores object key order; `rootPath`, when supplied, limits the refresh
-to that exact root. The returned number counts matching pages whose refresh was attempted, including
-provider listing errors. The call does not create pages, change the active page, or focus a window.
-Each refresh lists the tree root again, so a changed `readOnly` value updates the Explorer's write
-actions. The service must still enforce its current write setting on every mutation. This bridge
-member requires version `1.67.0`.
+```js
+watch(config, path, onChange) {
+    const timer = setInterval(() => onChange({}), config.pollIntervalMs ?? 2000);
+    return () => clearInterval(timer);
+}
+```
+
+Each Explorer watches its root and effectively expanded folders beneath visible ancestors. The
+host ignores the callback payload and re-lists the folder. Return a synchronous disposer;
+Persephone disposes it on collapse, removal, page close, or owner loss, and replays desired watches
+after restart. Trees without `watch` remain browsable. The board owns change detection, polling,
+and cleanup; Persephone does not poll.
+Declare `minBridgeVersion: "1.68.0"` when using tree watches.
+
+From a board frame, `persephone.openTree({ type, config, rootPath, title? })` opens its Explorer.
+The caller must own the accepted declaration; `rootPath` is `/` or a valid provider path. Repeating
+the same type, config, and root focuses the existing page. Requires bridge `1.65.0`.
+
+After a connection setting changes, `persephone.refreshTree({ type, config, rootPath? })` re-lists
+matching open Explorer roots owned by the caller. Config matching ignores key order; optional
+`rootPath` limits the match. The result counts attempted pages, including errors. It neither creates
+nor focuses pages. Root listing refreshes `readOnly`; the service enforces mutations. Requires
+bridge `1.67.0`.
 
 The `service` permission controls whether the declared background program can run. The Trust board
 dialog and Board Info show the permission set granted to that board. The service runs as a normal

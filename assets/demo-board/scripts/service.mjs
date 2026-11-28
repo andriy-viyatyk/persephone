@@ -22,14 +22,25 @@ globalThis.persephone.providers.register("demo/mem", {
 globalThis.persephone.treeProviders.register("demo/mem", {
     list(_config, path) {
         const items = path === "/"
-            ? [{ name: "demo.txt", path: "/demo.txt", href: "mem://demo", isDirectory: false, size: providerBytes.byteLength }]
+            ? [
+                { name: "demo.txt", path: "/demo.txt", href: "mem://demo", isDirectory: false, size: providerBytes.byteLength },
+                ...(Math.floor(Date.now() / 5_000) % 2 === 0
+                    ? [{ name: "pulse.txt", path: "/pulse.txt", href: "mem://demo", isDirectory: false }]
+                    : []),
+            ]
             : [];
         return { items, truncated: false };
     },
     stat(_config, path) {
         if (path === "/") return { exists: true, isDirectory: true };
         if (path === "/demo.txt") return { exists: true, isDirectory: false, size: providerBytes.byteLength };
+        if (path === "/pulse.txt") return { exists: true, isDirectory: false };
         return { exists: false, isDirectory: false };
+    },
+    watch(_config, path, onChange) {
+        if (path !== "/") return () => {};
+        const timer = setInterval(() => onChange({}), 2_500);
+        return () => clearInterval(timer);
     },
 });
 

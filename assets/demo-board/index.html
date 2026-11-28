@@ -363,7 +363,10 @@
                 The first button opens <code>stream-fixture.stream-demo</code> through this board's
                 <code>editorKind: "stream-host"</code> association. The fourth button calls
                 <code>persephone.openTree()</code> for the same service-backed <code>demo/mem</code>
-                provider, which lists <code>demo.txt</code> in Explorer. The fifth button calls
+                provider, which lists <code>demo.txt</code> and a periodically appearing
+                <code>pulse.txt</code> in Explorer. Its service-side <code>watch()</code> notifies
+                Persephone to re-list the root, so the row appears and disappears without manual
+                refresh. The fifth button calls
                 <code>persephone.refreshTree()</code> to re-list matching open trees without opening or focusing a page.
                 On the stream-host page, the second button
                 calls <code>persephone.host.streamUrl()</code> and sends <code>Range: bytes=0-31</code>.

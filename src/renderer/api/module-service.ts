@@ -18,6 +18,7 @@ import { api } from "../../ipc/renderer/api";
 import { errMessage } from "../../shared/utils";
 import { codedError, toCodedError } from "../../shared/coded-error";
 import { moduleServiceStatus } from "./module-service-status";
+import { notifyModuleServiceTreeAvailable } from "./module-service-tree-availability";
 
 interface PendingRequest {
     resolve: (value: unknown) => void;
@@ -37,6 +38,7 @@ interface Acquisition {
 interface ProviderWatchIntent {
     request: ProviderRequest;
     callback: (event: string) => void;
+    onAcknowledged?: () => void;
     acknowledged: boolean;
 }
 
@@ -181,6 +183,7 @@ function handleMessage(client: ServiceLeaseClient, message: RendererServiceMessa
     }
     if (message.kind === "provider-capabilities") {
         if (client.state === "attached" && typeof message.type === "string") {
+            const wasTreeRegistered = client.treeCapabilities.get(message.type)?.registered === true;
             client.capabilities.set(message.type, message.writable === true);
             client.rangeCapabilities.set(message.type, message.rangeReadable === true);
             client.chunkCapabilities.set(message.type, message.chunkWritable === true);
@@ -192,6 +195,9 @@ function handleMessage(client: ServiceLeaseClient, message: RendererServiceMessa
                     delete: message.tree?.delete === true,
                 },
             });
+            if (!wasTreeRegistered && message.treeRegistered === true) {
+                notifyModuleServiceTreeAvailable(client.boardRoot, message.type);
+            }
         }
         return;
     }
@@ -459,7 +465,7 @@ function replayWatchIntents(client: ServiceLeaseClient): void {
         void request(client.boardRoot, intent.request).then(
             (result) => {
                 const current = client.watchIntents.get(subscriptionId);
-                if (!current) {
+                if (current !== intent) {
                     if (isWatchAcknowledgement(result)) {
                         void request(client.boardRoot, {
                             ...intent.request,
@@ -469,6 +475,7 @@ function replayWatchIntents(client: ServiceLeaseClient): void {
                     return;
                 }
                 current.acknowledged = isWatchAcknowledgement(result);
+                if (current.acknowledged) current.onAcknowledged?.();
             },
             () => {
                 // Keep the caller-owned intent for a later lease. This attempt has settled.
@@ -498,6 +505,7 @@ function subscribeProvider(
     boardRoot: string,
     requestMessage: ProviderRequest,
     callback: (event: string) => void,
+    onAcknowledged?: () => void,
 ): () => void {
     ensureInitialized();
     const client = getClient(boardRoot);
@@ -507,13 +515,14 @@ function subscribeProvider(
     const intent: ProviderWatchIntent = {
         request: requestMessage,
         callback,
+        onAcknowledged,
         acknowledged: false,
     };
     client.watchIntents.set(key, intent);
     void request(boardRoot, requestMessage).then(
         (result) => {
             const current = client.watchIntents.get(key);
-            if (!current) {
+            if (current !== intent) {
                 if (isWatchAcknowledgement(result)) {
                     void request(boardRoot, {
                         ...requestMessage,
@@ -523,6 +532,7 @@ function subscribeProvider(
                 return;
             }
             current.acknowledged = isWatchAcknowledgement(result);
+            if (current.acknowledged) current.onAcknowledged?.();
         },
         () => {
             // A missing service or port is a settled subscribe attempt, not a retained Promise.
@@ -544,6 +554,8 @@ function subscribeProvider(
         }
     };
 }
+
+// (The callback is stored on the intent, so service lease replay uses the same acknowledgement path.)
 
 function subscribeProviderStatus(
     boardRoot: string,

@@ -14,9 +14,7 @@ import { editorRegistry } from "../../editors/base/editorRegistry";
 import { PageModel } from "./PageModel";
 import { navigatePageTo, type NavigatePageToOptions } from "./PageNavigator";
 import { guard } from "../../core/utils/guard";
-import { errMessage } from "../../../shared/utils";
 import { REOPEN_TRAIT } from "../../editors/base/editor-traits";
-import { RestoreFailedEditor } from "../../editors/restore-failed/RestoreFailedEditor";
 import { fpBasename } from "../../core/utils/file-path";
 import { applyOpenHints, prepareOpenedEditor, registerOpenSession } from "./open-request";
 import type { PageOpenRequest } from "./open-request";
@@ -480,48 +478,7 @@ export class PagesLifecycleModel {
     // ── Multi-window operations ──────────────────────────────────────
 
     recoverPage = async (pageId: string): Promise<void> => {
-        const placeholder = this.model.query.findPage(pageId);
-        const recovery = placeholder?.recovery;
-        const editor = placeholder?.mainEditor;
-        if (!placeholder || !recovery || !(editor instanceof RestoreFailedEditor) || editor.state.get().retrying || recovery.isInvalidated) return;
-        editor.state.update((state) => { state.retrying = true; });
-        const attempt = async (): Promise<void> => {
-            try {
-                const result = await this.model.persistence.constructPage(recovery.descriptor);
-                if (result.kind !== "restored") {
-                    editor.state.update((state) => {
-                        state.error = result.kind === "failed"
-                            ? errMessage(result.error, t("editors.restoreFailedTitle"))
-                            : t("editors.restoreFailedTitle");
-                    });
-                    return;
-                }
-                const recovered = result.page;
-                if (recovery.isInvalidated || this.model.query.findPage(pageId) !== placeholder) {
-                    await recovered.dispose();
-                    return;
-                }
-                const active = this.model.query.activePage === placeholder;
-                this.model.detachPage(placeholder);
-                this.model.attachPage(recovered);
-                this.model.replacePage(placeholder, recovered);
-                recovery.releaseCacheProtection();
-                recovery.clearRetry();
-                await placeholder.dispose();
-                this.model.persistence.saveStateDebounced();
-                if (active) {
-                    this.model.onShow.send(recovered);
-                    this.model.onFocus.send(recovered);
-                }
-            } catch (error) {
-                editor.state.update((state) => { state.error = errMessage(error, t("editors.restoreFailedTitle")); });
-            } finally {
-                editor.state.update((state) => { state.retrying = false; });
-            }
-        };
-        const promise = attempt();
-        recovery.trackRetry(promise);
-        try { await promise; } finally { recovery.clearRetry(promise); }
+        await this.model.pageRecovery.retry(pageId);
     };
 
     movePageIn = async (data?: {

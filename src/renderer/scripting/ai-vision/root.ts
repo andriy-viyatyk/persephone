@@ -340,6 +340,8 @@ class ScriptNode implements IAiVisible {
         if (typeof code !== "string" || !code) {
             throw new Error("Missing or invalid 'script' parameter");
         }
+        const { pages } = await import("../../api/pages");
+        await pages.startupRestore.waitForSettled();
         const editor = resolveRendererScriptEditor(pageId);
         this.pruneRuns();
         const runId = globalThis.crypto.randomUUID();

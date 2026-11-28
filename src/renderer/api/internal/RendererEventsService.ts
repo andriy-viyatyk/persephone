@@ -18,25 +18,29 @@ import { t } from "../../../shared/i18n/t";
  * Will be updated in to delegate to app.pages instead.
  */
 export class RendererEventsService {
+    private startupEvents: Array<() => Promise<void>> = [];
+    private startupEventsReleased = false;
+    private startupEventQueue: Promise<void> = Promise.resolve();
+
     async init(): Promise<void> {
         // App.initEvents() owns these process-lifetime IPC subscriptions; no view/model
         // owns the application event bus wiring.
         // Page operations (currently delegates to pages)
         rendererEvents.eOpenFile.subscribe((filePath) =>
-            this.openLaunchInput({ kind: "file", path: filePath }),
+            this.queueStartupEvent(() => this.openLaunchInput({ kind: "file", path: filePath })),
         );
         rendererEvents.eOpenDiff.subscribe((params) =>
-            this.openLaunchInput({ kind: "diff", ...params }),
+            this.queueStartupEvent(() => this.openLaunchInput({ kind: "diff", ...params })),
         );
-        rendererEvents.eShowPage.subscribe(this.handleShowPage);
-        rendererEvents.eMovePageIn.subscribe(this.handleMovePageIn);
-        rendererEvents.eMovePageOut.subscribe(this.handleMovePageOut);
+        rendererEvents.eShowPage.subscribe((pageId) => this.queueStartupEvent(() => this.handleShowPage(pageId)));
+        rendererEvents.eMovePageIn.subscribe((data) => this.queueStartupEvent(() => this.handleMovePageIn(data)));
+        rendererEvents.eMovePageOut.subscribe((pageId) => this.queueStartupEvent(() => this.handleMovePageOut(pageId)));
 
         // URL opening
-        rendererEvents.eOpenUrl.subscribe(this.handleOpenUrl);
-        rendererEvents.eOpenClaimedBrowserDownload.subscribe(this.handleClaimedBrowserDownload);
+        rendererEvents.eOpenUrl.subscribe((event) => this.queueStartupEvent(() => this.handleOpenUrl(event)));
+        rendererEvents.eOpenClaimedBrowserDownload.subscribe((data) => this.queueStartupEvent(() => this.handleClaimedBrowserDownload(data)));
         rendererEvents.eOpenExternalUrl.subscribe((url) =>
-            this.openLaunchInput({ kind: "url", url }),
+            this.queueStartupEvent(() => this.openLaunchInput({ kind: "url", url })),
         );
 
         // Quit handler
@@ -49,6 +53,27 @@ export class RendererEventsService {
         // Board `persephone.notify()` toast.
         rendererEvents["eBoardNotify"].subscribe(this.handleBoardNotify);
 
+    }
+
+    releaseStartupEvents(): void {
+        this.startupEventsReleased = true;
+        const pending = this.startupEvents;
+        this.startupEvents = [];
+        for (const operation of pending) this.enqueueStartupEvent(operation);
+    }
+
+    private queueStartupEvent(operation: () => Promise<void>): void {
+        if (this.startupEventsReleased) {
+            this.enqueueStartupEvent(operation);
+            return;
+        }
+        this.startupEvents.push(operation);
+    }
+
+    private enqueueStartupEvent(operation: () => Promise<void>): void {
+        this.startupEventQueue = this.startupEventQueue.then(operation).catch((error: unknown) => {
+            console.error("Failed to process queued startup page event:", errMessage(error));
+        });
     }
 
     openLaunchInput = async (input: LaunchInput): Promise<void> => {
@@ -111,6 +136,7 @@ export class RendererEventsService {
     };
 
     private handleBeforeQuit = async () => {
+        pages.startupRestore.close();
         if (appWindow.isBoardMode) {
             const nonRightPages = pages.state.get().pages.filter((page) => page.pinSide !== "right");
             // A save prompt waits for the user; without this, main's 2-second unresponsive-renderer
@@ -139,6 +165,7 @@ export class RendererEventsService {
     };
 
     private handleReloadForLanguage = async () => {
+        pages.startupRestore.close();
         try {
             await saveWindowStateForShutdown();
             window.location.reload();

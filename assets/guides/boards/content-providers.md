@@ -55,6 +55,16 @@ optional. `stat(config, path, { signal })` returns `{ exists, isDirectory, size?
 Optional `mkdir(config, path)`, `rename(config, oldPath, newPath)`, and `delete(config, path)`
 enable those Explorer actions. Listing and stat support cancellation and have no timer deadline;
 mutations use the service request deadline. Search within a board-provided tree is not available.
+Tree providers may optionally register
+`watch?(config: Record<string, unknown>, path: string, onChange: (event: unknown) => void): () => void`.
+The method is
+called synchronously for the root and folders that are effectively expanded through visible
+ancestors in each Explorer. `onChange(event)` is a signal; the host ignores its payload and lists
+that folder again. Return a disposer function synchronously to stop detection when the folder is
+collapsed, removed, the page closes, or the provider loses ownership. Desired subscriptions replay
+after service restart. A tree without `watch` continues to browse normally. The board owns change
+detection, polling if needed, and cleanup; Persephone does not poll tree providers. Set
+`minBridgeVersion: "1.68.0"` when using this method.
 Persephone can transfer files between supported local and board trees when both providers expose
 the required read and write operations; a board tree without write support cannot be a destination.
 Writable board trees also offer **New File** in a folder's context menu. The board must support
@@ -76,6 +86,10 @@ persephone.treeProviders.register("example/mem", {
     },
     async stat(config, path, { signal }) {
         return readMetadata(config, path, { signal });
+    },
+    watch(config, path, onChange) {
+        const timer = setInterval(() => onChange({}), config.pollIntervalMs ?? 2000);
+        return () => clearInterval(timer);
     },
 });
 ```

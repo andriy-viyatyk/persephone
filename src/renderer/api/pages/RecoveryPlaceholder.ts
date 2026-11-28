@@ -6,6 +6,10 @@ export class RecoveryPlaceholder {
     private invalidated = false;
     private closeAuthorized = false;
     private protectionOwned = true;
+    private cleanupRequested = false;
+    private cleanupStarted = false;
+    onInvalidated?: () => void;
+    onCloseCancelled?: () => void;
 
     constructor(readonly descriptor: PageDescriptor) {}
 
@@ -20,7 +24,9 @@ export class RecoveryPlaceholder {
 
     async cancel(): Promise<void> {
         this.invalidated = true;
-        await this.retryPromise;
+        this.onInvalidated?.();
+        // A restore may be waiting for a user prompt. Closing a page must not wait for it.
+        this.scheduleCleanupAfterRetry();
     }
 
     async authorizeClose(confirm: () => Promise<boolean>): Promise<boolean> {
@@ -28,10 +34,14 @@ export class RecoveryPlaceholder {
         this.invalidated = true;
         if (!(await confirm())) {
             this.invalidated = false;
+            const retry = this.retryPromise;
+            if (retry) void retry.then(() => this.onCloseCancelled?.(), () => this.onCloseCancelled?.());
+            else this.onCloseCancelled?.();
             return false;
         }
-        await this.retryPromise;
         this.closeAuthorized = true;
+        this.onInvalidated?.();
+        this.scheduleCleanupAfterRetry();
         return true;
     }
 
@@ -43,6 +53,27 @@ export class RecoveryPlaceholder {
 
     async disposeAfterClose(): Promise<void> {
         if (!this.closeAuthorized) return;
+        if (this.retryPromise) {
+            this.cleanupRequested = true;
+            return;
+        }
+        await this.cleanupAfterClose();
+    }
+
+    private scheduleCleanupAfterRetry(): void {
+        const retry = this.retryPromise;
+        if (!retry || !this.closeAuthorized) return;
+        this.cleanupRequested = true;
+        void retry.then(
+            () => { if (this.cleanupRequested) void this.cleanupAfterClose(); },
+            () => { if (this.cleanupRequested) void this.cleanupAfterClose(); },
+        );
+    }
+
+    private async cleanupAfterClose(): Promise<void> {
+        if (!this.closeAuthorized || this.cleanupStarted) return;
+        this.cleanupStarted = true;
+        this.cleanupRequested = false;
         const ids = [...new Set(this.descriptor.editors.map((editor) => editor.id).filter(Boolean))];
         this.releaseCacheProtection();
         for (const id of ids) {

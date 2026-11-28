@@ -8,6 +8,9 @@ export class PagesLayoutModel {
 
     onMainEditorChanged = (page: PageModel): void => {
         const inPair = this.model.query.isInCompareMode(page.id);
+        const groupedPage = this.model.query.getGroupedPage(page.id);
+        if (page.restore.state.get().status !== "ready") return;
+        if (groupedPage && groupedPage.restore.state.get().status !== "ready") return;
         if (inPair.active && !this.model.query.getTextFileHost(page.id)) {
             this.exitCompareMode(page.id);
         }

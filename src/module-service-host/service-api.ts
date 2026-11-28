@@ -64,6 +64,7 @@ export interface TreeProviderImplementationDeclaration {
     mkdir?(config: Record<string, unknown>, path: string): unknown | Promise<unknown>;
     rename?(config: Record<string, unknown>, oldPath: string, newPath: string): unknown | Promise<unknown>;
     delete?(config: Record<string, unknown>, path: string): unknown | Promise<unknown>;
+    watch?(config: Record<string, unknown>, path: string, onChange: (event: unknown) => void): () => void;
 }
 
 export interface PersephoneHostApi {

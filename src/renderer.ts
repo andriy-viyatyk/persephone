@@ -25,7 +25,29 @@ async function bootstrap(): Promise<(container: HTMLElement) => () => void> {
     await app.startup(rendererIndex);
     const cont = await rendererIndex;
 
-    setTimeout(() => api.windowReady(), 0);
+    setTimeout(async () => {
+        const startupRestore = app.pages.startupRestore;
+        const firstPaint = new Promise<void>((resolve) => {
+            const fallback = setTimeout(resolve, 1000);
+            if (document.visibilityState === "hidden") return;
+            requestAnimationFrame(() => {
+                setTimeout(() => {
+                    clearTimeout(fallback);
+                    resolve();
+                }, 0);
+            });
+        });
+        startupRestore.setReadinessRetry(() => api.windowReady());
+        try {
+            await Promise.all([api.windowReady(), firstPaint]);
+            startupRestore.release();
+        } catch (error) {
+            startupRestore.acknowledgementFailed(error);
+        }
+    }, 0);
+    window.addEventListener("beforeunload", () => {
+        app.pages.startupRestore.close();
+    }, { once: true });
     return cont.mount;
 }
 

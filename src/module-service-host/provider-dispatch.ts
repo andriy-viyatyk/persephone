@@ -8,6 +8,7 @@ import { isRecord } from "./validation";
 import type { TreeProviderDispatch } from "./tree-provider-dispatch";
 import { isValidBoardTreePath } from "../shared/board/board-tree-path";
 import { ProviderWriteSessions, type ProviderWriteImplementation } from "./provider-write-sessions";
+import { providerWatchKey, subscribeProviderWatch, unsubscribeProviderWatch } from "./provider-watch-subscriptions";
 
 export interface ProviderImplementation {
     readBinary(config: Record<string, unknown>, context: { signal: AbortSignal }): Promise<unknown> | unknown;
@@ -46,7 +47,7 @@ type ValidatedProviderRequest = ProviderRequest & (
     | { operation: "writeChunk"; writeId: string; data: Uint8Array }
     | { operation: "treeList" | "treeStat" | "treeMkdir" | "treeDelete"; path: string }
     | { operation: "treeRename"; path: string; newPath: string }
-    | { operation: "watchSubscribe" | "watchUnsubscribe" | "statusSubscribe" | "statusUnsubscribe"; subscriptionId: string }
+    | { operation: "watchSubscribe" | "watchUnsubscribe" | "statusSubscribe" | "statusUnsubscribe"; subscriptionId: string; treePath?: string }
 );
 
 export function createProviderDispatch(dependencies: {
@@ -58,10 +59,6 @@ export function createProviderDispatch(dependencies: {
     const writeSessions = new ProviderWriteSessions();
     const PROVIDER_STATUS_STATES: ReadonlySet<string> = new Set(["idle", "connecting", "active", "done", "error"]);
     const PROVIDER_STATUS_INTERVAL_MS = 250;
-
-function providerKey(type: string, subscriptionId: string): string {
-    return `${type}\u0000${subscriptionId}`;
-}
 
 function announceCapabilities(lease: RendererLease): void {
     if (!lease?.attached || !dependencies.entryLoaded() || !dependencies.rendererLeases().isCurrent(lease)) return;
@@ -123,6 +120,16 @@ function isProviderRequest(message: unknown, validation: { message?: string }): 
         && (typeof message.subscriptionId !== "string" || message.subscriptionId.length === 0)) {
         validation.message = "Malformed provider subscription request."; return false;
     }
+    if (message.treePath !== undefined) {
+        if (message.operation !== "watchSubscribe" && message.operation !== "watchUnsubscribe") {
+            validation.message = "treePath is only valid for tree watch subscriptions.";
+            return false;
+        }
+        if (!isValidBoardTreePath(message.treePath)) {
+            validation.message = "Malformed tree provider watch path.";
+            return false;
+        }
+    }
     if (message.operation === "writeBinary"
         && (!isUint8Array(message.data) || message.data.byteLength > MAX_BUFFERED_PIPE_BYTES)) {
         validation.message = "Malformed or oversized provider payload."; return false;
@@ -171,6 +178,27 @@ function validStat(stat: unknown): stat is ProviderWireStat {
 }
 
 async function executeProviderRequest(lease: RendererLease, request: ValidatedProviderRequest, controller: AbortController): Promise<ProviderResult> {
+    if (request.treePath !== undefined) {
+        const subscriptionId = request.subscriptionId;
+        const treePath = request.treePath;
+        if (typeof subscriptionId !== "string") {
+            return providerFailure("provider-failed", "Tree watch request is missing its subscription ID.");
+        }
+        const key = providerWatchKey(request.type, subscriptionId, treePath);
+        if (request.operation === "watchUnsubscribe") return unsubscribeProviderWatch(lease, key);
+        return subscribeProviderWatch(
+            lease,
+            key,
+            subscriptionId,
+            () => dependencies.rendererLeases().isCurrent(lease) && lease.attached,
+            (event) => dependencies.rendererLeases().post(lease, {
+                kind: "provider-event",
+                subscriptionId,
+                event: typeof event === "string" ? event : String(event),
+            }),
+            (onChange) => dependencies.treeProviders.watch(request.type, request.config, treePath, onChange),
+        );
+    }
     if (request.operation.startsWith("tree")) {
         return dependencies.treeProviders.execute(request as TreeProviderRequest, controller.signal);
     }
@@ -250,8 +278,11 @@ async function executeProviderRequest(lease: RendererLease, request: ValidatedPr
         return { kind: "provider-result", operation: "stat", ok: true, stat };
     }
 
-    const subscriptionId = request.subscriptionId!;
-    const key = providerKey(request.type, subscriptionId);
+    const subscriptionId = request.subscriptionId;
+    if (typeof subscriptionId !== "string") {
+        return providerFailure("provider-failed", "Provider subscription request is missing its subscription ID.");
+    }
+    const key = providerWatchKey(request.type, subscriptionId);
     if (request.operation === "statusUnsubscribe") {
         const subscription = lease.subscriptions.get(key);
         if (subscription) {
@@ -341,46 +372,25 @@ async function executeProviderRequest(lease: RendererLease, request: ValidatedPr
     }
 
     if (request.operation === "watchUnsubscribe") {
-        const subscription = lease.subscriptions.get(key);
-        if (subscription) {
-            lease.subscriptions.delete(key);
-            try {
-                subscription.dispose();
-            } catch (error: unknown) {
-                return providerFailure("provider-failed", errMessage(error, "watch disposer failed."));
-            }
-        }
-        return { kind: "provider-result", operation: "watchUnsubscribe", ok: true };
+        return unsubscribeProviderWatch(lease, key);
     }
 
-    if (typeof implementation.watch !== "function") {
+    const watch = implementation.watch;
+    if (typeof watch !== "function") {
         return providerFailure("provider-failed", `Provider "${request.type}" does not support watch().`);
     }
-    // Lease attach replays every watch intent, so a subscribe already in flight can arrive twice
-    // with one id. Replace the earlier provider watch, as statusSubscribe does, instead of leaking it.
-    const previous = lease.subscriptions.get(key);
-    if (previous) {
-        lease.subscriptions.delete(key);
-        try { previous.dispose(); } catch { /* A replaced watch is torn down best effort. */ }
-    }
-    let disposer: (() => void) | { dispose(): void };
-    try {
-        disposer = implementation.watch(request.config, (event: unknown): void => {
-            if (!dependencies.rendererLeases().isCurrent(lease) || !lease.attached || !lease.subscriptions.has(key)) return;
-            dependencies.rendererLeases().post(lease, {
-                kind: "provider-event",
-                subscriptionId,
-                event: typeof event === "string" ? event : String(event),
-            });
-        });
-    } catch (error: unknown) {
-        return providerFailure("provider-failed", errMessage(error, "watch() failed."));
-    }
-    if (typeof disposer !== "function") {
-        return providerFailure("provider-invalid-result", "watch() must return a disposer.");
-    }
-    lease.subscriptions.set(key, { dispose: disposer, clear: (): void => undefined, lastSentAt: 0 });
-    return { kind: "provider-result", operation: "watchSubscribe", ok: true };
+    return subscribeProviderWatch(
+        lease,
+        key,
+        subscriptionId,
+        () => dependencies.rendererLeases().isCurrent(lease) && lease.attached,
+        (event) => dependencies.rendererLeases().post(lease, {
+            kind: "provider-event",
+            subscriptionId,
+            event: typeof event === "string" ? event : String(event),
+        }),
+        (onChange) => watch.call(implementation, request.config, onChange),
+    );
 }
 
 function finishProviderRequest(lease: RendererLease, requestId: string, result: ProviderResult): void {

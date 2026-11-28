@@ -17,6 +17,8 @@ import { BoardPageRouter } from "../boards/board-page-router";
 import { api } from "../../../ipc/renderer/api";
 import { invalidatePagePipe } from "../../content/pipe-resource-server";
 import { FRESH_EMPTY_TRAIT } from "../../editors/base/editor-traits";
+import { PageRecovery } from "./PageRecovery";
+import { StartupPageRestore } from "./StartupPageRestore";
 
 // ── State ────────────────────────────────────────────────────────────
 
@@ -45,6 +47,8 @@ export class PagesModel extends TModel<OpenFilesState> {
     readonly query: PagesQueryModel;
     readonly navigation: PagesNavigationModel;
     readonly persistence: PagesPersistenceModel;
+    readonly pageRecovery: PageRecovery;
+    readonly startupRestore: StartupPageRestore;
     readonly layout: PagesLayoutModel;
     readonly lifecycle: PagesLifecycleModel;
     readonly boardPageRouter: BoardPageRouter;
@@ -60,6 +64,8 @@ export class PagesModel extends TModel<OpenFilesState> {
         });
         this.query = new PagesQueryModel(this);
         this.persistence = new PagesPersistenceModel(this);
+        this.pageRecovery = new PageRecovery(this);
+        this.startupRestore = new StartupPageRestore(this);
         this.disposables.add(this.persistence.saveStateDebounced.cancel);
         this.layout = new PagesLayoutModel(this);
         this.navigation = new PagesNavigationModel(this);

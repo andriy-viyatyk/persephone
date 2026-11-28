@@ -50,6 +50,15 @@ export interface IncrementalTreeProvider extends ITreeProvider {
     listIncremental(dirPath: string): Promise<ITreeProviderItem[]>;
 }
 
+/** A tree provider with independent subscriptions for listed directory folders. */
+export interface FolderWatchableTreeProvider extends ITreeProvider {
+    watchFolder(href: string, path: string, callback: (batch: ClassifiedTreeWatchBatch) => void): () => void;
+}
+
+export function isFolderWatchable(provider: ITreeProvider): provider is FolderWatchableTreeProvider {
+    return "watchFolder" in provider && typeof provider.watchFolder === "function";
+}
+
 export function isWatchable(provider: ITreeProvider): provider is WatchableTreeProvider {
     return "watch" in provider && typeof provider.watch === "function";
 }

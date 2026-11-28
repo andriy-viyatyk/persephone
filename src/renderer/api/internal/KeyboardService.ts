@@ -175,6 +175,8 @@ export class KeyboardService {
 }
 
 export async function openFocusedGuideOrContents(): Promise<void> {
+    const focusedPage = pages.query.focusedPage;
+    if (focusedPage && focusedPage.restore.state.get().status !== "ready") return;
     const editorInstance = pages.query.focusedPage?.mainEditor;
     const editorId = editorInstance?.editorId;
     // A board page (plain `board-view` or a custom-editor `board-editor:<root>`) exposes the board

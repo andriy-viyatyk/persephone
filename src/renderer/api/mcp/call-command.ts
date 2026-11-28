@@ -8,7 +8,7 @@ import type { HintMode } from "ai-vision";
  * The main process peels `windows[i]` off the path before forwarding and passes the kinds whose
  * member lists this session has already seen, so hint dedupe survives the process boundary.
  */
-export async function handleCall(params: McpCallParams): Promise<unknown> {
+export async function handleCall(params: McpCallParams, signal?: AbortSignal): Promise<unknown> {
     const path = typeof params?.path === "string" ? params.path : "";
     const args = Array.isArray(params?.args) ? (params.args as unknown[]) : undefined;
     const hints = params?.hints as HintMode | undefined;
@@ -28,7 +28,18 @@ export async function handleCall(params: McpCallParams): Promise<unknown> {
         : 0;
     const request = { path, args, hints, maxLength, timeoutMs, allowNavigation: params?.allowNavigation === true, ...(params && "value" in params ? { value: params.value } : {}) };
 
+    if (isPageDependentPath(path)) {
+        const { pages } = await import("../pages");
+        await pages.startupRestore.waitForSettled(signal, timeoutMs);
+    }
+
     const { aiCall } = await import("../../scripting/ai-vision/call");
     const result = await aiCall(request, seenKinds, eventCursor, params?.collectAgentTips === true);
     return result;
+}
+
+function isPageDependentPath(path: string): boolean {
+    return /^(?:app\.)?pages(?:\.|\[|$)/.test(path)
+        || /^(?:app\.)?page(?:\.|\[|$)/.test(path)
+        || /^script\.execute(?:\.|$)/.test(path);
 }

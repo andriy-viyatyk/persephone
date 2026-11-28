@@ -24,6 +24,7 @@ import { encodeCategoryLink } from "./tree-provider-link";
 import { pipeFromLink } from "../rebuild-pipe";
 import { boardTreeBackingStoreIdentity, boardTreeSourceIdentity } from "./tree-provider-identity";
 import type { TransferEntry, TreeTransferCapability } from "./tree-provider-capabilities";
+import { BoardTreeWatches } from "./board-tree-watches";
 import {
     invalidProviderResult,
     mapProviderRequestError,
@@ -65,7 +66,9 @@ export class ProxyTreeProvider implements ITreeProvider {
     private readonly deleteModes = new Map<string, "recursive" | "empty-only">();
     private readonly requests = new Set<AbortController>();
     private readonly unsubscribeAvailability: () => void;
+    private readonly folderWatches: BoardTreeWatches;
     private lastAcceptedRoot: string | undefined;
+    private rootListSequence = 0;
     private rootReadOnly = false;
     private disposed = false;
     private clipboardSourceFactory?: () => ITreeProvider;
@@ -110,6 +113,13 @@ export class ProxyTreeProvider implements ITreeProvider {
         this.sourceUrl = boardTreeSourceIdentity({ type, config, rootPath });
         this.lastAcceptedRoot = this.currentAcceptedProvider()?.boardRoot;
         this.unsubscribeAvailability = this.subscribeForOwnerChanges();
+        this.folderWatches = new BoardTreeWatches(
+            this.type,
+            this.config as Record<string, unknown>,
+            () => this.currentAcceptedProvider(),
+            () => this.requireAcceptedProvider(),
+            subscribeProviderAvailability,
+        );
     }
 
     /** Installed by the factory so clipboard clones use the same accepted-provider boundary. */
@@ -153,6 +163,7 @@ export class ProxyTreeProvider implements ITreeProvider {
 
     async list(path: string): Promise<ILink[]> {
         const accepted = await this.requireAcceptedProvider();
+        const rootListSequence = this.beginRootList(path);
         const result = await this.request(accepted, "treeList", path);
         if (!result.ok || result.operation !== "treeList") {
             throw invalidProviderResult("treeList");
@@ -161,7 +172,6 @@ export class ProxyTreeProvider implements ITreeProvider {
         if (!active || !BoardRoot.tryFrom(active.boardRoot)?.equals(accepted.boardRoot)) {
             throw new ProviderUnavailableError(this.type, providerDeclarationFor(this.type));
         }
-        this.recordRootReadOnly(path, result.readOnly);
         const items = result.items;
         for (const item of items) {
             const scheme = schemeOf(item.href);
@@ -172,6 +182,7 @@ export class ProxyTreeProvider implements ITreeProvider {
                 throw invalidProviderResult("treeList");
             }
         }
+        this.recordRootReadOnly(path, result.readOnly, rootListSequence);
 
         const folders: ILink[] = [];
         const files: ILink[] = [];
@@ -206,6 +217,16 @@ export class ProxyTreeProvider implements ITreeProvider {
         return [...folders, ...files];
     }
 
+    async listIncremental(href: string): Promise<ILink[]> {
+        const path = href === this.rootPath ? this.rootPath : this.hrefToPath.get(hrefKey(href));
+        if (!path) throw new Error(`No listed board tree item is known for href "${href}".`);
+        return this.list(path);
+    }
+
+    watchFolder(href: string, path: string, callback: (batch: import("./tree-provider-capabilities").ClassifiedTreeWatchBatch) => void): () => void {
+        return this.folderWatches.watch(href, path, callback);
+    }
+
     private validateTransferName(name: string): void {
         if (!name || name === "." || name === ".." || /[\\/\0]/.test(name)) {
             throw new Error(`Invalid board target name: ${name}`);
@@ -214,12 +235,13 @@ export class ProxyTreeProvider implements ITreeProvider {
 
     private async listTransferChildren(path: string): Promise<TransferEntry[]> {
         const accepted = await this.requireAcceptedProvider();
+        const rootListSequence = this.beginRootList(path);
         const result = await this.request(accepted, "treeList", path);
-        if (result.ok && result.operation === "treeList") this.recordRootReadOnly(path, result.readOnly);
         if (!result.ok || result.operation !== "treeList" || result.truncated) {
             throw new Error(`Board tree listing is incomplete at "${path}".`);
         }
         this.rememberListedItems(accepted, result.items);
+        this.recordRootReadOnly(path, result.readOnly, rootListSequence);
         return result.items.map((item) => ({
             link: {
                 title: item.name, href: item.href, category: path, tags: item.isDirectory ? [] : this.extensionTags(item.name),
@@ -445,8 +467,15 @@ export class ProxyTreeProvider implements ITreeProvider {
             && moduleService.providerTreeCapabilities(accepted.boardRoot, this.type)?.[capability] === true;
     }
 
-    private recordRootReadOnly(path: string, readOnly: boolean | undefined): void {
-        if (path === this.rootPath) this.rootReadOnly = readOnly === true;
+    private beginRootList(path: string): number | undefined {
+        if (path !== this.rootPath) return undefined;
+        return ++this.rootListSequence;
+    }
+
+    private recordRootReadOnly(path: string, readOnly: boolean | undefined, sequence: number | undefined): void {
+        if (path === this.rootPath && sequence === this.rootListSequence) {
+            this.rootReadOnly = readOnly === true;
+        }
     }
 
     private async runWrite(
@@ -502,6 +531,7 @@ export class ProxyTreeProvider implements ITreeProvider {
             if (this.disposed) return;
             const currentRoot = this.currentAcceptedProvider()?.boardRoot;
             if (currentRoot !== this.lastAcceptedRoot) {
+                this.rootListSequence++;
                 for (const request of this.requests) request.abort();
                 this.lastAcceptedRoot = currentRoot;
             }
@@ -512,6 +542,7 @@ export class ProxyTreeProvider implements ITreeProvider {
     dispose(): void {
         if (this.disposed) return;
         this.disposed = true;
+        this.rootListSequence++;
         for (const request of this.requests) request.abort();
         this.requests.clear();
         this.hrefToPath.clear();
@@ -519,5 +550,6 @@ export class ProxyTreeProvider implements ITreeProvider {
         this.truncatedPaths.clear();
         this.deleteModes.clear();
         this.unsubscribeAvailability();
+        this.folderWatches.dispose();
     }
 }

@@ -8,6 +8,7 @@ import { scriptEngine } from "./script-engine";
 import { scriptLibrary } from "./ScriptLibrary";
 import { t } from "../../shared/i18n/t";
 import { ui } from "../api/ui";
+import { errMessage } from "../../shared/utils";
 
 const SCRIPT_REJECTION_GRACE_MS = 1000;
 
@@ -35,6 +36,8 @@ class ScriptRunner {
      * MCP mode — creates context, captures console, cleans up, returns structured result.
      */
     runWithCapture = async (script: string, page?: EditorModel, language?: string, tipCollector?: AgentTipCollector): Promise<McpScriptResult> => {
+        await pages.startupRestore.waitForSettled();
+        page = this.resolveCurrentEditor(page);
         const consoleLogs: ConsoleLogEntry[] = [];
         const result = await this.executeWithContext(script, "agent", page, consoleLogs, language, tipCollector);
         const isError = result instanceof Error;
@@ -55,6 +58,10 @@ class ScriptRunner {
         page: EditorModel,
         language?: string,
     ): Promise<string> => {
+        await pages.startupRestore.waitForSettled();
+        const currentPage = this.resolveCurrentEditor(page);
+        if (!currentPage) throw new Error("The script editor is no longer attached to its page.");
+        page = currentPage;
         const { result, outputFlags } = await this.executeWithContextAndFlags(script, "user", page, undefined, language);
         const isError = result instanceof Error;
         const outputSuppressed = outputFlags.outputPrevented || outputFlags.groupedContentWritten;
@@ -72,6 +79,14 @@ class ScriptRunner {
 
         return textAndLang.text;
     };
+
+    private resolveCurrentEditor(editor: EditorModel | undefined): EditorModel | undefined {
+        if (!editor?.page) return editor;
+        const page = pages.query.findPage(editor.page.id);
+        const current = page?.editors.find((candidate) => candidate.id === editor.id);
+        if (!current) throw new Error("The script editor is no longer attached to its page.");
+        return current;
+    }
 
     // -------------------------------------------------------------------------
     // Internal: context lifecycle management
@@ -119,7 +134,7 @@ class ScriptRunner {
             return { result, outputFlags: scriptContext.outputFlags };
         } catch (error) {
             return {
-                result: error instanceof Error ? error : new Error(String(error)),
+                result: new Error(errMessage(error)),
                 outputFlags: scriptContext?.outputFlags ?? { outputPrevented: false, groupedContentWritten: false },
             };
         } finally {

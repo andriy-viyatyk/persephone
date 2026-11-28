@@ -6,6 +6,11 @@ summary: "Which bridge version added each persephone.* member and manifest field
 
 # Boards — bridge version history and compatibility
 
+Bridge `1.68.0` adds optional `watch(config, path, onChange)` to tree-provider registrations.
+The board service owns change detection and returns a synchronous disposer; Explorer watches its
+root and effectively expanded folders, and desired watches replay after service restart. Boards
+using it should declare `minBridgeVersion: "1.68.0"`.
+
 Bridge `1.67.0` adds host-managed service access to a board's own environment-variable profile
 (`persephone.var.get/set/delete/keys`) and adds `persephone.var.delete()` and `persephone.var.keys()`
 to board pages. Page `keys()` matches `list()`; existing `list()` and `show()` remain available.

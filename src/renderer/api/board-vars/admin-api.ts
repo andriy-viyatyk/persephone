@@ -16,15 +16,7 @@ class BoardVarsAdmin {
      *  (first use, no file configured) or the decrypt-password prompt (locked file) as needed.
      *  Throws on decline/cancel/error — every admin method awaits this first. */
     private async ensureReady(): Promise<void> {
-        let load = await boardVars.ensureLoaded();
-        if (load.status === "not-configured") {
-            const { showCreateBoardVarsStorageDialog } = await import(
-                "../../api/dialogs/CreateBoardVarsStorageDialog"
-            );
-            const created = await showCreateBoardVarsStorageDialog();
-            if (!created) throw new Error("Board environment variables storage is not configured.");
-            load = await boardVars.ensureLoaded();
-        }
+        const load = await boardVars.ensureInteractiveReady();
         if (load.status === "locked") {
             throw new Error("Board environment variables file is locked.");
         }

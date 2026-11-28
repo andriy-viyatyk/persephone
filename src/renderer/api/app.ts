@@ -24,7 +24,10 @@ class App {
     private _servicesInitialization: Promise<void> | undefined;
     private _pagesInitialized = false;
     private _eventsInitialized = false;
-    private _rendererEventsService?: { openLaunchInput(input: LaunchInput): Promise<void> };
+    private _rendererEventsService?: {
+        openLaunchInput(input: LaunchInput): Promise<void>;
+        releaseStartupEvents(): void;
+    };
     private readonly _serviceValues: Partial<
         Record<AppServiceKey, AppServiceSurface[AppServiceKey]>
     > = {};
@@ -161,6 +164,7 @@ class App {
             setPages: (pages) => { this._pages = pages; },
             getPages: () => this.pages,
             setRendererEventsService: (service) => { this._rendererEventsService = service; },
+            getRendererEventsService: () => this._rendererEventsService,
             openStartupInput: (input) => {
                 if (!this._rendererEventsService) {
                     throw new Error("Renderer events service is not initialized");

@@ -38,6 +38,11 @@ class BoardEnvStore {
     private loadedPath: string | null = null;
     private parsed: BoardVarsFile = {};
     private started = false;
+    private generation = 0;
+    private modelLoad?: { path: string; generation: number; promise: Promise<BoardVarsLoadResult> };
+    private interactiveLoad?: Promise<BoardVarsLoadResult>;
+    private decryptPrompt?: Promise<BoardVarsLoadResult>;
+    private createPrompt?: Promise<boolean>;
 
     start(): void {
         if (this.started) return;
@@ -56,6 +61,9 @@ class BoardEnvStore {
     }
 
     private reset(): void {
+        this.generation++;
+        this.interactiveLoad = undefined;
+        this.decryptPrompt = undefined;
         void this.model?.dispose();
         this.model = null;
         this.loadedPath = null;
@@ -68,22 +76,49 @@ class BoardEnvStore {
      * before the sync accessors.
      */
     async ensureLoaded(opts?: { silent?: boolean }): Promise<BoardVarsLoadResult> {
+        if (!opts?.silent && this.interactiveLoad) return this.interactiveLoad;
+        if (!opts?.silent) {
+            const operation = this.ensureLoadedCore(false);
+            this.interactiveLoad = operation;
+            try { return await operation; }
+            finally { if (this.interactiveLoad === operation) this.interactiveLoad = undefined; }
+        }
+        return this.ensureLoadedCore(true);
+    }
+
+    /** Coalesced create/decrypt flow shared by service and admin callers in this renderer. */
+    async ensureInteractiveReady(): Promise<BoardVarsLoadResult> {
+        let load = await this.ensureLoaded();
+        if (load.status === "not-configured") {
+            if (!this.createPrompt) {
+                const operation = import("../dialogs/CreateBoardVarsStorageDialog")
+                    .then(({ showCreateBoardVarsStorageDialog }) => showCreateBoardVarsStorageDialog())
+                    .finally(() => { if (this.createPrompt === operation) this.createPrompt = undefined; });
+                this.createPrompt = operation;
+            }
+            const created = await this.createPrompt;
+            if (!created) return { status: "not-configured" };
+            load = await this.ensureLoaded();
+            if (load.status === "not-configured") {
+                return { status: "error", message: "Board environment variables storage could not be loaded after creation." };
+            }
+        }
+        return load;
+    }
+
+    private async ensureLoadedCore(silent: boolean): Promise<BoardVarsLoadResult> {
         const path = (settings.get("board-vars.file") || "").trim();
         if (!path) return { status: "not-configured" };
-        if (!(await fs.exists(path))) return { status: "not-configured" };
-
+        const generation = this.generation;
         if (this.loadedPath !== path) {
-            this.reset();
-            this.model = new TextFileModel(
-                new TComponentState({
-                    ...getDefaultTextFileEditorModelState(),
-                    filePath: path,
-                    language: "json",
-                }),
-            );
-            this.model.skipSave = true;
-            await this.model.restore();
-            this.loadedPath = path;
+            if (!this.modelLoad || this.modelLoad.path !== path || this.modelLoad.generation !== generation) {
+                const promise = this.loadModel(path, generation);
+                this.modelLoad = { path, generation, promise };
+            }
+            const load = this.modelLoad;
+            const result = await load.promise;
+            if (this.modelLoad === load) this.modelLoad = undefined;
+            if (result.status !== "ok") return result;
         }
         const model = this.model;
         if (!model) return { status: "error", message: "No store model" };
@@ -91,15 +126,30 @@ class BoardEnvStore {
         if (shell.encryption.isEncrypted(model.state.get().content || "")) {
             // `decrypted` is true once the password has been entered this session.
             if (!model.decrypted) {
-                if (opts?.silent) return { status: "locked" };
-                const password = await ui.password({
-                    mode: "decrypt",
-                    message: t("api.decryptBoardEnvironmentVariables"),
-                });
-                if (!password) return { status: "locked" };
-                const ok = await model.decrypt(password); // toasts on wrong password
-                if (!ok) return { status: "locked" };
+                if (silent) return { status: "locked" };
+                if (!this.decryptPrompt) {
+                    const decryptModel = model;
+                    const loadGeneration = this.generation;
+                    const operation = (async (): Promise<BoardVarsLoadResult> => {
+                        const password = await ui.password({
+                            mode: "decrypt",
+                            message: t("api.decryptBoardEnvironmentVariables"),
+                        });
+                        if (!password) return { status: "locked" };
+                        if (loadGeneration !== this.generation || decryptModel !== this.model) return { status: "not-configured" };
+                        const ok = await decryptModel.decrypt(password); // toasts on wrong password
+                        if (!ok) return { status: "locked" };
+                        return { status: "ok" };
+                    })().finally(() => { if (this.decryptPrompt === operation) this.decryptPrompt = undefined; });
+                    this.decryptPrompt = operation;
+                }
+                const decrypted = await this.decryptPrompt;
+                if (decrypted.status !== "ok") return decrypted;
             }
+        }
+
+        if (model !== this.model || generation !== this.generation || path !== (settings.get("board-vars.file") || "").trim()) {
+            return { status: "not-configured" };
         }
 
         try {
@@ -110,6 +160,39 @@ class BoardEnvStore {
             return { status: "error", message: errMessage(e) };
         }
         return { status: "ok" };
+    }
+
+    private async loadModel(path: string, generation: number): Promise<BoardVarsLoadResult> {
+        if (!(await fs.exists(path))) return { status: "not-configured" };
+        const model = new TextFileModel(
+            new TComponentState({
+                ...getDefaultTextFileEditorModelState(),
+                filePath: path,
+                language: "json",
+            }),
+        );
+        model.skipSave = true;
+        try {
+            await model.restore();
+            if (generation !== this.generation || path !== (settings.get("board-vars.file") || "").trim()) {
+                await model.dispose();
+                return { status: "not-configured" };
+            }
+            this.resetModelOnly();
+            this.model = model;
+            this.loadedPath = path;
+            return { status: "ok" };
+        } catch (error) {
+            await model.dispose();
+            return { status: "error", message: errMessage(error) };
+        }
+    }
+
+    private resetModelOnly(): void {
+        if (this.model) void this.model.dispose();
+        this.model = null;
+        this.loadedPath = null;
+        this.parsed = {};
     }
 
     // ── Sync accessors — call ensureLoaded() (status "ok") first ─────────────

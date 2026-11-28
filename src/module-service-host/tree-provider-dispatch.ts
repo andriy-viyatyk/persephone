@@ -16,6 +16,7 @@ export interface TreeProviderImplementation {
     mkdir?(config: Record<string, unknown>, path: string): unknown | Promise<unknown>;
     rename?(config: Record<string, unknown>, oldPath: string, newPath: string): unknown | Promise<unknown>;
     delete?(config: Record<string, unknown>, path: string): unknown | Promise<unknown>;
+    watch?(config: Record<string, unknown>, path: string, onChange: (event: unknown) => void): () => void;
 }
 
 export interface TreeProviderDispatch {
@@ -23,6 +24,7 @@ export interface TreeProviderDispatch {
     has(type: string): boolean;
     types(): string[];
     capabilities(type: string): { mkdir: boolean; rename: boolean; delete: boolean } | undefined;
+    watch(type: string, config: Record<string, unknown>, path: string, onChange: (event: unknown) => void): (() => void) | undefined;
     execute(
         request: TreeProviderRequest,
         signal: AbortSignal,
@@ -35,7 +37,7 @@ function isNamespacedType(type: string): boolean {
 
 function isTreeProviderImplementation(value: unknown): value is TreeProviderImplementation {
     if (!isRecord(value) || typeof value.list !== "function" || typeof value.stat !== "function") return false;
-    return ["mkdir", "rename", "delete"].every((method) => value[method] === undefined || typeof value[method] === "function");
+    return ["mkdir", "rename", "delete", "watch"].every((method) => value[method] === undefined || typeof value[method] === "function");
 }
 
 export { isValidBoardTreePath as isValidTreePath } from "../shared/board/board-tree-path";
@@ -206,6 +208,15 @@ export function createTreeProviderDispatch(dependencies: {
                 rename: typeof provider.rename === "function",
                 delete: typeof provider.delete === "function",
             } : undefined;
+        },
+        watch(type, config, path, onChange): (() => void) | undefined {
+            if (!isValidBoardTreePath(path)) throw new TypeError("Malformed tree provider watch path.");
+            const provider = providers.get(type);
+            if (!provider) throw new Error(`Tree provider "${type}" is not registered.`);
+            if (typeof provider.watch !== "function") return (): void => undefined;
+            const disposer = provider.watch(config, path, onChange);
+            if (typeof disposer !== "function") throw new TypeError("watch() must return a disposer function.");
+            return disposer;
         },
         execute,
     };

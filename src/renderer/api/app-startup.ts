@@ -21,7 +21,8 @@ export interface AppStartupContext {
     reportBackgroundFailure(name: string, error: unknown): void;
     setPages(pages: PagesModel): void;
     getPages(): PagesModel;
-    setRendererEventsService(service: { openLaunchInput(input: LaunchInput): Promise<void> }): void;
+    setRendererEventsService(service: { openLaunchInput(input: LaunchInput): Promise<void>; releaseStartupEvents(): void }): void;
+    getRendererEventsService(): { releaseStartupEvents(): void } | undefined;
     openStartupInput(input: LaunchInput): Promise<void>;
     checkEmptyPage(): void;
     notifyMnemeExited(error: string): void;
@@ -273,6 +274,9 @@ export const appStartupEntries: readonly AppStartupEntry[] = [
             }
             try {
                 const { autoloadService } = await import("./autoload-service");
+                const startupRestore = context.getPages().startupRestore;
+                await Promise.all([startupRestore.settled, startupRestore.ready]);
+                if (startupRestore.isClosed) return;
                 await autoloadService.loadScripts();
             } catch (error) {
                 context.reportBackgroundFailure("autoload-startup", error);
@@ -300,10 +304,14 @@ export const appStartupEntries: readonly AppStartupEntry[] = [
         start: async (context) => {
             const { api } = await import("../../ipc/renderer/api");
             const startupInputs = await api.getStartupInputs();
-            for (const input of startupInputs) {
-                await context.openStartupInput(input);
-            }
-            context.checkEmptyPage();
+            const pages = context.getPages();
+            void Promise.all([pages.startupRestore.settled, pages.startupRestore.ready]).then(async () => {
+                if (pages.startupRestore.isClosed) return;
+                for (const input of startupInputs) await context.openStartupInput(input);
+                context.checkEmptyPage();
+                const events = context.getRendererEventsService();
+                events?.releaseStartupEvents();
+            });
         },
     },
 ];

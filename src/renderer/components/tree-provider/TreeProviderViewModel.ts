@@ -21,13 +21,13 @@ import { findNode, findParent, updateNodeChildren, type TreeProviderNode } from 
 import { computeDisplayTree, getExpandedPaths } from "./tree-search-filter";
 import {
     isLocalFileProvider,
-    isWatchable,
-    type ClassifiedTreeWatchBatch,
 } from "../../content/tree-providers/tree-provider-capabilities";
 import { ProviderTreeExpansion } from "./provider-tree-expansion";
 import { ProviderTreeStore } from "./provider-tree-store";
+import { ProviderTreeWatchController } from "./provider-tree-watch-controller";
 import { localTreeAncestorPaths, treeItemListPath, treePathHref } from "./tree-provider-path";
 import { ProviderTreeLoading } from "./provider-tree-loading";
+import { ProviderTreeFolderWatches } from "./provider-tree-folder-watches";
 import { handleTreeClipboardKeyDown } from "./tree-keyboard-actions";
 
 // =============================================================================
@@ -126,9 +126,16 @@ export class TreeProviderViewModel extends TComponentModel<
     private readonly store = new ProviderTreeStore(
         (node, provider) => treeItemListPath(provider, node.data),
     );
+    private readonly treeWatch = new ProviderTreeWatchController(this.store, {
+        getProvider: () => this.props.provider,
+        getSearchText: () => this.state.get().searchText,
+        getShowLinks: () => this.props.showLinks !== false,
+        getExpansion: () => this.expansion,
+        rebuild: () => this.buildTree(),
+        publish: (tree, displayTree, expandedValues) => this.publishWatchTree(tree, displayTree, expandedValues),
+    });
+    private readonly folderWatches = new ProviderTreeFolderWatches((batch, isCurrent) => this.treeWatch.queue(batch, isCurrent));
     private revealRequest: ((href: string) => Promise<void>) | undefined;
-    private watchSubscription?: () => void;
-    private watchOwnerRegistered = false;
     private readonly loading = new ProviderTreeLoading(this.store, {
         getTree: () => this.state.get().tree,
         canLoad: () => !this.state.get().loading,
@@ -139,7 +146,7 @@ export class TreeProviderViewModel extends TComponentModel<
             });
         },
         onLoaded: tree => this.publishLoadedChildren(tree),
-        onStale: () => this.queueWatchRefresh(),
+        onStale: () => this.treeWatch.queue(),
     });
     private previousProvider: ITreeProvider | undefined;
     private previousShowLinks: boolean | undefined;
@@ -200,11 +207,13 @@ export class TreeProviderViewModel extends TComponentModel<
                 this.adoptSelection([seed]);
             }
             this.initializeTree();
-            this.subscribeWatch();
+            this.treeWatch.subscribe(props.provider);
+            this.reconcileFolderWatches(null);
         } else if (providerChanged) {
             this.invalidateFolderLoads();
             this.store.adoptProvider(props.provider);
-            this.subscribeWatch();
+            this.treeWatch.subscribe(props.provider);
+            this.reconcileFolderWatches(null);
             this.buildTree();
         } else if (showLinksChanged) {
             this.recomputeDisplayTree();
@@ -260,68 +269,33 @@ export class TreeProviderViewModel extends TComponentModel<
         this.props.onStateChange?.(this.getState());
     };
 
-    private subscribeWatch = () => {
-        if (!this.watchOwnerRegistered) {
-            this.watchOwnerRegistered = true;
-            this.own(() => this.watchSubscription?.());
-        }
-        this.watchSubscription?.();
-        this.watchSubscription = undefined;
-        const provider = this.props.provider;
-        if (isWatchable(provider)) {
-            const unsubscribe = provider.watch((batch) => this.queueWatchRefresh(batch));
-            this.watchSubscription = unsubscribe;
-        }
-    };
-
     dispose = () => {
         this.invalidateFolderLoads();
         this.store.dispose();
-        this.watchSubscription?.();
-        this.watchSubscription = undefined;
+        this.treeWatch.dispose();
+        this.folderWatches.dispose();
         // Release watch resources when the owner disposes this model.
     };
 
-    private queueWatchRefresh = (batch?: ClassifiedTreeWatchBatch) => {
+    private publishWatchTree = (
+        tree: TreeProviderNode,
+        displayTree: TreeProviderNode,
+        expandedValues: Readonly<Record<string | number, boolean>>,
+    ): void => {
         const provider = this.props.provider;
-        this.store.enqueueWatch(provider, async (operation, currentBatch) => {
-            const original = this.store.snapshot;
-            if (!original) { await this.buildTree(); return; }
-            try {
-                const result = await this.store.refreshWatchBatch(
-                    original,
-                    currentBatch,
-                    () => operation.isCurrent() && this.store.snapshot === original,
-                );
-                if (!result) { await this.buildTree(); return; }
-                if (result.shouldPublish) {
-                    const next = result.tree;
-                    const searchText = this.state.get().searchText;
-                    const displayTree = computeDisplayTree(
-                        next,
-                        searchText,
-                        this.props.showLinks !== false,
-                        getExpandedPaths(this.expansion.normalExpansionRecord()),
-                    );
-                    const expandedValues = this.expansion.getDisplayExpansion(displayTree, searchText);
-                    this.store.setSnapshot(next);
-                    this.state.update(state => {
-                        state.tree = next;
-                        state.displayTree = displayTree;
-                        state.expandedValues = expandedValues;
-                        // Keep every selected href that still exists in the patched tree (watch paths
-                        // compare with the filesystem key), as the pre-split watch patch did.
-                        state.selectedValues = state.selectedValues.filter(href => !!findNode(
-                            next,
-                            fpNormalizeForCompare(href),
-                            (nodeHref, target) => fpNormalizeForCompare(nodeHref) === target,
-                        ));
-                    });
-                }
-            } catch {
-                await this.buildTree();
-            }
-        }, batch);
+        this.state.update(state => {
+            state.tree = tree;
+            state.displayTree = displayTree;
+            state.expandedValues = expandedValues;
+            state.selectedValues = state.selectedValues.filter(href => !!findNode(
+                tree,
+                isLocalFileProvider(provider) ? fpNormalizeForCompare(href) : href,
+                (nodeHref, target) => (isLocalFileProvider(provider)
+                    ? fpNormalizeForCompare(nodeHref)
+                    : nodeHref) === target,
+            ));
+        });
+        this.reconcileFolderWatches(tree);
     };
 
     private initializeTree = async () => {
@@ -335,6 +309,11 @@ export class TreeProviderViewModel extends TComponentModel<
         }
     };
 
+    private reconcileFolderWatches = (tree = this.state.get().tree): void => {
+        const { displayTree, searchText } = this.state.get();
+        this.folderWatches.reconcile(this.props.provider, tree, displayTree, searchText, this.expansion);
+    };
+
     private publishExpansionChange = (pruneSelection = false): void => {
         this.expansion.invalidateProjection();
         const { displayTree, searchText } = this.state.get();
@@ -346,6 +325,7 @@ export class TreeProviderViewModel extends TComponentModel<
             state.expandedValues = expandedValues;
             state.selectedValues = selectedValues;
         });
+        this.reconcileFolderWatches();
         this.props.onStateChange?.(this.getState());
     };
 
@@ -409,6 +389,7 @@ export class TreeProviderViewModel extends TComponentModel<
                 s.error = null;
                 s.loading = false;
             });
+            this.reconcileFolderWatches(workingTree);
             void this.loading.loadMany(this.expansion.expandedPaths(displayTree, searchText), !!previousTree);
         } catch (err) {
             if (!operation.isCurrent()) return;
@@ -421,6 +402,7 @@ export class TreeProviderViewModel extends TComponentModel<
                 s.error = err;
                 s.loading = false;
             });
+            this.reconcileFolderWatches(null);
         }
     };
 
@@ -446,6 +428,7 @@ export class TreeProviderViewModel extends TComponentModel<
             state.displayTree = displayTree;
             state.expandedValues = expandedValues;
         });
+        this.reconcileFolderWatches(tree);
     }
 
     retryLoad = (href: string): void => {
@@ -523,6 +506,7 @@ export class TreeProviderViewModel extends TComponentModel<
             s.displayTree = displayTree;
             s.expandedValues = expandedValues;
         });
+        this.reconcileFolderWatches();
         if (wasDeep) this.props.onStateChange?.(this.getState());
     };
 
@@ -545,6 +529,7 @@ export class TreeProviderViewModel extends TComponentModel<
             s.displayTree = displayTree;
             s.expandedValues = expandedValues;
         });
+        this.reconcileFolderWatches();
         if (wasDeep && !isDeep) this.props.onStateChange?.(this.getState());
     };
 
@@ -562,6 +547,7 @@ export class TreeProviderViewModel extends TComponentModel<
             s.displayTree = displayTree;
             s.expandedValues = expandedValues;
         });
+        this.reconcileFolderWatches();
     };
 
     // ── Reveal item ───────────────────────────────────────────────────────

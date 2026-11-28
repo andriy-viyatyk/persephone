@@ -257,6 +257,7 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   ├── proc.ts             # IProc implementation (app.proc.execute) — the ipcRenderer transport for the shared execute() handle (shared/execute-handle.ts); compile-time drift guard keeps it in sync with runner-channels.ts
 │   ├── terminal.ts         # openTerminalAt(dir) helper — reads terminal.command, auto-detects pwsh→powershell→cmd on first use and saves it, then launches ("Open Terminal here")
 │   ├── module-service.ts   # Renderer client for main-routed service requests, direct board channels, and the optional per-window host-renderer lease
+│   ├── module-service-tree-availability.ts # Board-root/type notifications when a tree provider registers again
 │   ├── board-service-settings.ts # Trust- and service-gated settings reads/subscriptions for host-managed board services
 │   ├── ts-project-files.ts # Bounded tsconfig-based TypeScript project file selection
 │   ├── ts-project-registry.ts # Board-owned TypeScript project roots and file lookup
@@ -289,6 +290,8 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   │   ├── IPageHost.ts            # IPageHost interface — editor↔owner contract (PageModel + BrowserPanelHost)
 │   │   ├── PageRestore.ts          # Deferred restore state, cancellation, readiness and typed retry
 │   │   ├── RecoveryPlaceholder.ts  # Failed-restore descriptor, retry/close coordination and cache protection
+│   │   ├── StartupPageRestore.ts    # Startup placeholders, renderer-ready gate, retry and completion signals
+│   │   ├── PageRecovery.ts          # Identity-checked recovery-page reconstruction and replacement
 │   │   ├── SecondaryViewsModel.ts  # Reactive sidebar layout state (open, width, activePanel)
 │   │   ├── panel-key.ts            # Composite panel-key helpers (`${editorId}::${panelId}`)
 │   │   ├── PagesModel.ts           # Base: state, subscriptions, composes submodels
@@ -418,6 +421,7 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   │   ├── FileTreeProvider.ts  # Local filesystem directories
 │   │   ├── ArchiveTreeProvider.ts # Archives (ZIP, RAR, 7z, TAR, cab, ISO — read-only)
 │   │   ├── ProxyTreeProvider.ts # Trusted board service tree over the module-service provider channel
+│   │   ├── board-tree-watches.ts # Explorer folder-watch intents and replay when the service registers again
 │   │   ├── tree-provider-factory.ts # Type-to-provider construction shared by tree hosts
 │   │   ├── tree-provider-identity.ts # Stable identity for persisted board tree sources
 │   │   ├── tree-provider-capabilities.ts # Classified watch batches and internal provider capability predicates
@@ -1023,6 +1027,8 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   │   ├── TreeProviderView.ts # Native tree chrome and UIKit Tree wiring
 │   │   ├── TreeProviderViewModel.ts # Controlled expansion, search projection, selection, actions, and drops
 │   │   ├── provider-tree-store.ts # Provider tree builds, expanded-child listing, and serialized watch refresh
+│   │   ├── provider-tree-watch-controller.ts # Provider watch wiring and serialized refresh application
+│   │   ├── provider-tree-folder-watches.ts # Watch subscriptions for the visible, effectively expanded folders
 │   │   ├── provider-tree-expansion.ts # Saved paths and normal/deep-search expansion state
 │   │   ├── tree-provider-node.ts # Provider tree node transforms and lookup helpers
 │   │   ├── tree-search-filter.ts # Search matching and display-tree filtering

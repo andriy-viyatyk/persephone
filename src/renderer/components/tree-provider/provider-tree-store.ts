@@ -3,6 +3,7 @@ import type { ITreeProvider } from "../../api/types/io.tree";
 import { fpNormalizeForCompare } from "../../core/utils/file-path";
 import {
     isIncremental,
+    isLocalFileProvider,
     type ClassifiedTreeWatchBatch,
 } from "../../content/tree-providers/tree-provider-capabilities";
 import {
@@ -27,6 +28,10 @@ export interface WatchRefreshResult {
     shouldPublish: boolean;
 }
 
+function identityForProvider(provider: ITreeProvider, href: string): string {
+    return isLocalFileProvider(provider) ? fpNormalizeForCompare(href) : href;
+}
+
 export class ProviderTreeStore {
     /** Set by the owner's first `adoptProvider` call, before any build, load or watch. */
     private provider!: ITreeProvider;
@@ -34,6 +39,10 @@ export class ProviderTreeStore {
     private disposed = false;
     private tree: TreeProviderNode | null = null;
     private readonly watchQueue = new SerialQueue();
+    /** The root listing of the current full build, while it runs. A watch batch waits for it
+     *  instead of taking a newer generation: that would make the build drop its result and
+     *  leave the tree in its loading state, and the build lists fresh data anyway. */
+    private buildInFlight: Promise<unknown> | null = null;
 
     constructor(
         private readonly getListPath: (node: TreeProviderNode, provider: ITreeProvider) => string,
@@ -93,8 +102,9 @@ export class ProviderTreeStore {
         provider: ITreeProvider,
         run: (operation: TreeOperation, batch?: ClassifiedTreeWatchBatch) => Promise<void>,
         batch?: ClassifiedTreeWatchBatch,
-    ): void {
-        void this.watchQueue.run(async () => {
+    ): Promise<void> {
+        return this.watchQueue.run(async () => {
+            while (this.buildInFlight) await this.buildInFlight.catch((): undefined => undefined);
             if (this.disposed || this.provider !== provider) return;
             // Batches run one at a time, so the generation is taken when this one starts: a later
             // batch is not a reason to rebuild, but an expansion load or rebuild in between is.
@@ -115,7 +125,15 @@ export class ProviderTreeStore {
         operation: TreeOperation,
     ): Promise<TreeProviderNode | null> {
         const { provider } = operation;
-        const items = filterTreeItems(await provider.list(provider.rootPath));
+        const listing = provider.list(provider.rootPath);
+        this.buildInFlight = listing;
+        let listed: Awaited<typeof listing>;
+        try {
+            listed = await listing;
+        } finally {
+            if (this.buildInFlight === listing) this.buildInFlight = null;
+        }
+        const items = filterTreeItems(listed);
         if (!operation.isCurrent()) return null;
         const rootTree: TreeProviderNode = {
             data: {
@@ -157,16 +175,16 @@ export class ProviderTreeStore {
     ): Promise<WatchRefreshResult | null> {
         if (!batch || "rebuild" in batch || !isIncremental(this.provider)) return null;
 
-        const normalize = fpNormalizeForCompare;
+        const identity = (href: string): string => identityForProvider(this.provider, href);
         const findByWatchPath = (tree: TreeProviderNode, path: string): TreeProviderNode | null =>
-            findNode(tree, path, (href, target) => normalize(href) === target);
+            findNode(tree, path, (href, target) => identity(href) === target);
         const parents = new Map<string, TreeProviderNode>();
         for (const target of batch.relist) {
             if (
                 target.changedPaths
-                && !target.changedPaths.some(path => findByWatchPath(original, normalize(path))?.data.isDirectory)
+                && !target.changedPaths.some(path => findByWatchPath(original, identity(path))?.data.isDirectory)
             ) continue;
-            const key = normalize(target.href);
+            const key = identity(target.href);
             const node = findByWatchPath(original, key);
             if (node?.items) parents.set(key, node);
         }
@@ -212,7 +230,7 @@ export class ProviderTreeStore {
                         ? node.items?.find(child =>
                             force
                                 ? sameHref(child.data.href, item.href)
-                                : fpNormalizeForCompare(child.data.href) === fpNormalizeForCompare(item.href),
+                                : identityForProvider(provider, child.data.href) === identityForProvider(provider, item.href),
                         )
                         : undefined;
                     if ((mode === "relist-loaded" || force) && old && old.data.isDirectory !== item.isDirectory) {

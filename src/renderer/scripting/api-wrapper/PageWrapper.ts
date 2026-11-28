@@ -294,14 +294,18 @@ export class PageWrapper implements IAiVisible {
     }
 
     async runScript(): Promise<string> {
-        if (!this.model) {
+        await pages.startupRestore.waitForSettled();
+        const page = pages.query.findPage(this.id);
+        const attached = page?.mainEditor;
+        if (!attached) {
             throw new Error(`Page ${JSON.stringify(this.id)} has no editor, so there is no script to run.`);
         }
-        const language = this.language;
+        const current = new PageWrapper(attached, this.releaseList, this.outputFlags, this.callContext, page);
+        const language = current.language;
         const { isScriptLanguage } = await import("../transpile");
         if (!isScriptLanguage(language)) throw new Error("runScript() is only available for javascript/typescript pages");
         const { scriptRunner } = await import("../ScriptRunner");
-        return scriptRunner.runWithResult(this.content, this.model, language);
+        return scriptRunner.runWithResult(current.content, attached, language);
     }
 
     async save(): Promise<boolean> {

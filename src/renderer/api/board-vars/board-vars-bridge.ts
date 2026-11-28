@@ -1,4 +1,3 @@
-import { showCreateBoardVarsStorageDialog } from "../../api/dialogs/CreateBoardVarsStorageDialog";
 import { boardVars } from "./BoardEnvStore";
 import { openEnvVarsPage } from "../../editors/env-vars/open-env-vars";
 import { errMessage } from "../../../shared/utils";
@@ -30,26 +29,15 @@ async function runVarRequest(namespace: string, method: BoardVarMethod, args: un
     let load;
     try {
         throwIfAborted();
-        load = await boardVars.ensureLoaded();
+        load = await boardVars.ensureInteractiveReady();
         throwIfAborted();
     } catch (error: unknown) {
         return codedFailure(error, "board-vars-unavailable", "Failed to load the board environment variables.");
     }
 
-    if (load.status === "not-configured") {
-        try {
-            throwIfAborted();
-            const created = await showCreateBoardVarsStorageDialog();
-            throwIfAborted();
-            if (!created) return declineQueuedRequests(codedError("board-vars-declined", "Board environment variables storage is not configured."));
-            load = await boardVars.ensureLoaded();
-            throwIfAborted();
-        } catch (error: unknown) {
-            return codedFailure(error, "board-vars-unavailable", "Failed to create the board environment variables store.");
-        }
-    }
+    throwIfAborted();
+    if (load.status === "not-configured") return declineQueuedRequests(codedError("board-vars-declined", "Board environment variables storage is not configured."));
     if (load.status === "locked") return declineQueuedRequests(codedError("board-vars-declined", "Board environment variables file is locked."));
-    if (load.status === "not-configured") return codedFailure(codedError("board-vars-unavailable", "Failed to load the board environment variables."), "board-vars-unavailable");
     if (load.status !== "ok") return codedFailure(codedError("board-vars-unavailable", load.message || "Failed to load the board environment variables."), "board-vars-unavailable");
 
     try {

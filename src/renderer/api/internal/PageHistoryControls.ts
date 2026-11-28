@@ -1,6 +1,7 @@
 import { EditorId } from "../../../shared/editor-ids";
 import { pages } from "../pages";
 import type { IPageHost } from "../pages/IPageHost";
+import { PageModel } from "../pages/PageModel";
 
 export type PageHistoryDirection = "back" | "forward";
 
@@ -9,7 +10,9 @@ export class PageHistoryControls {
     /** A page whose history the user can drive: it has one, and it is not a Browser page
      *  (the Browser keeps its own webview history). */
     isEligiblePage(page: IPageHost | undefined = pages.query.activePage): boolean {
-        return !!page?.history && page.mainEditor?.editorId !== EditorId.browserView;
+        return !!page?.history
+            && (!(page instanceof PageModel) || page.restore.state.get().status === "ready")
+            && page.mainEditor?.editorId !== EditorId.browserView;
     }
 
     /** Moves `page` (the active page for shortcuts and mouse buttons) one step in its history. */

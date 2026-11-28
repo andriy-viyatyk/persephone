@@ -468,6 +468,12 @@ rootPath }` descriptor is persisted and `config` remains opaque to core; boards 
 connection references there rather than credentials. These operations use the existing
 module-service provider channel and its shared deadline policy.
 
+Tree providers may also implement `watch(config, path, onChange)`. The host asks the service to
+watch the root and folders effectively expanded in each Explorer; the board decides how to detect
+changes and returns a synchronous disposer. A notification causes the host to re-list that folder.
+Desired watches are restored when the provider registers again after a service restart. Trees
+without `watch` remain browsable and refresh manually.
+
 Tree listings may mark a folder `readOnly: true`; when that marker is returned for the tree root,
 the renderer disables writes for that connection's Explorer tree even if the provider type also
 supports writes. The service still enforces its own access rules. Cross-tree copy and move share

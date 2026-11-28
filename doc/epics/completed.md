@@ -1,3 +1,23 @@
+## EPIC-220 — FTP board (remote trees phase 4)
+
+Completed 2026-11-28. Phase 4 of the [remote trees roadmap](../reviews/remote-trees-roadmap.md): an FTP board in
+persephone-boards (`boards/ftp`, BT-108..BT-111, see that repo's `doc/tasks/completed.md`) plus the three host
+follow-ups EPIC-219 left open. The SSH and FTP boards publish after the 5.0.24 release.
+
+- **Restore after window ready (US-2261):** startup placeholders for restored pages wait for the window's ready
+  acknowledgement (`StartupPageRestore`, `PageRecovery`) before board-backed content and trees load; env-store
+  prompts are coalesced. A restored `ssh://` tree and file show content without a reload.
+- **Tree watch route (US-2262, bridge 1.68.0):** optional `watch(config, path, onChange)` on
+  `persephone.treeProviders.register`, carried on the content `watchSubscribe` route with a `treePath`
+  discriminator; the host watches the root and expanded folders of visible Explorers only and re-lists on change.
+- **Write state after restart (US-2263):** open board trees re-list when the service reaches running or a tree
+  capability re-registers, so write actions come back (`module-service-tree-availability.ts`).
+- **Fixes found during verification:** restored tabs lost their icons (`PageTabView` never rebound to a new model);
+  a watch batch during a full rebuild left the Explorer root on "Loading..." (`ProviderTreeStore`).
+- **Board (persephone-boards):** FTP / explicit FTPS / implicit FTPS connections, certificate pinning from the page,
+  pooled clients, editable files with temp-name writes, file and folder watches; the SSH board gains folder watches.
+  Verified on `persephone-vm` against vsftpd. Not verified: system-CA certificates, rename fallback, connection loss.
+
 ## EPIC-219 — SSH board (remote trees phase 3)
 
 Completed 2026-11-28. Phase 3 of the [remote trees roadmap](../reviews/remote-trees-roadmap.md): an SSH board in

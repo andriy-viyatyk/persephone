@@ -57,7 +57,7 @@ Any saved file can open a **File Explorer** panel alongside the editor. Click th
   - **Entry highlighting** — The Archive panel highlights the currently viewed entry in the tree as you navigate between files.
   - **Auto-reveal in archive** — When the Archive panel is expanded, navigating to a file inside the archive automatically expands its parent folders and scrolls the tree to reveal the entry.
 - **Browse `.asar` archives** — Electron `.asar` archive files can also be browsed via the Archive panel or **Open as Archive**, just like ZIP archives. Files inside `.asar` open in Monaco editor. `.asar` archives are read-only — file operations are disabled inside them.
-- **Auto-refresh** — The Explorer tree automatically refreshes when files or folders are created, deleted, or renamed outside the app. No manual refresh is needed.
+- **Auto-refresh** — The Explorer tree automatically refreshes when local files or folders change outside the app. Board-provided trees also refresh when their board supports folder watches; support can vary by board. No manual refresh is needed for changes the tree watches.
 - **Lazy loading** — Folders load their contents on expand, keeping large directories fast
 - **Resizable** — Drag the panel border to resize
 - **Persistent state** — Expanded folders, panel width, and scroll position survive app restarts and in-tab navigation

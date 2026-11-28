@@ -182,6 +182,8 @@ export interface ProviderRequest {
     type: string;
     config: Record<string, unknown>;
     subscriptionId?: string;
+    /** Present only for a tree-folder watch; omitted content watches retain their existing route. */
+    treePath?: string;
     data?: Uint8Array;
     range?: { start: number; end: number };
     path?: string;

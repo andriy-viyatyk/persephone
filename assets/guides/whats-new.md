@@ -12,10 +12,11 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ## Version 5.0.24 (Upcoming)
 
-- **Boards can provide Explorer trees:** browse remote folders, open files in Persephone, transfer items between supported trees by drag and drop or copy/paste, and download board items to a local folder. Writable remote trees offer **New File**, and files opened through a board provider show its source icon in the editor status bar. Read-only trees remain available as copy sources.
+- **Boards can provide Explorer trees:** browse remote folders, open files in Persephone, transfer items between supported trees by drag and drop or copy/paste, and download board items to a local folder. Remote folders refresh automatically when the board supports folder watches. Writable remote trees offer **New File**, and files opened through a board provider show its source icon in the editor status bar. Read-only trees remain available as copy sources.
 
 ### Bug Fixes
 
+- **Board Explorer trees recover after restart:** restored remote files load their content, and writable actions return when a board service restarts.
 - **Start Mneme also enables it when it is off.** If Mneme is already enabled but stopped, the button restarts the service.
 - **Linux shutdown is more reliable.** Persephone no longer aborts when the whole process group receives `SIGTERM`, such as during logout or `systemctl stop`.
 

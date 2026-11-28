@@ -93,7 +93,25 @@ export class PagesPersistenceModel {
         page.attach(editor);
         page.mainEditor = editor;
         page.recovery = new RecoveryPlaceholder(descriptor);
+        page.restore.retry = () => this.model.lifecycle.recoverPage(page.id);
         return page;
+    };
+
+    createStartupPlaceholder = (descriptor: PageDescriptor): PageModel => {
+        const ids = descriptor.editors.map((editor) => editor.id).filter(Boolean);
+        appFs.protectCacheIds(ids);
+        try {
+            const page = this.createRestoreFailedPage(descriptor, new Error(t("editors.restoreFailedTitle")));
+            page.restore.state.update((state) => {
+                state.status = "loading";
+                state.error = undefined;
+            });
+            page.restore.retry = () => this.model.startupRestore.retryPage(page);
+            return page;
+        } catch (error) {
+            appFs.releaseCacheIds(ids);
+            throw error;
+        }
     };
 
     restorePage = async (descriptor: PageDescriptor, options: { seedSecondaryViewsWidth?: boolean } = {}): Promise<PageModel | null> => {
@@ -216,23 +234,7 @@ export class PagesPersistenceModel {
     };
 
     private applyState = async (data: WindowState): Promise<void> => {
-        const results = await Promise.all(
-            data.pages.map(async (d) => {
-                try {
-                    return await this.restorePage(d);
-                } catch (err) {
-                    console.warn(`[restore] page ${d.id}:`, err);
-                    const ids = d.editors.map((editor) => editor.id);
-                    appFs.protectCacheIds(ids);
-                    try { return this.createRestoreFailedPage(d, err); }
-                    catch (placeholderError) { appFs.releaseCacheIds(ids); throw placeholderError; }
-                }
-            }),
-        );
-
-        const models: PageModel[] = results.filter(
-            (p): p is PageModel => p !== null,
-        );
+        const models = this.model.startupRestore.begin(data.pages);
         for (const p of models) this.model.attachPage(p);
 
         const pagesByZone = this.model.layout.sortByPinSide(models);

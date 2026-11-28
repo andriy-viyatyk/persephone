@@ -2,6 +2,7 @@ import type { EditorModelInstance as EditorModel } from "../editors/base/EditorM
 import { TEXT_SELECTION_TRAIT } from "../editors/base/editor-traits";
 import { isScriptLanguage } from "./transpile";
 import { scriptRunner } from "./ScriptRunner";
+import { pages } from "../api/pages";
 
 export interface RunPageScriptOptions {
     all?: boolean;
@@ -14,6 +15,11 @@ export async function runPageScript(
     editor: EditorModel,
     options: RunPageScriptOptions,
 ): Promise<void> {
+    await pages.startupRestore.waitForSettled();
+    const page = pages.query.findPage(editor.page?.id ?? "");
+    const currentEditor = page?.editors.find((candidate) => candidate.id === editor.id) ?? page?.mainEditor;
+    if (!currentEditor) return;
+    editor = currentEditor;
     const host = editor.contentHost;
     if (!host) return;
 

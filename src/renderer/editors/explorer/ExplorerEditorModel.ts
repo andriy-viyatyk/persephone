@@ -140,6 +140,7 @@ export class ExplorerEditor extends EditorModel<ExplorerEditorState> {
             this.providerRecovery.dispose();
             this.providerRecovery = undefined;
         }
+        this.providerRecovery?.setDescriptor(descriptor);
         if (provider && !isLocalFileProvider(provider) && this.searchState) {
             this.searchState = undefined;
             this.state.update(current => { current.searchState = undefined; });

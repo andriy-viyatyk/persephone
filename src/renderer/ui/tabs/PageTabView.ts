@@ -122,6 +122,10 @@ export class PageTabView extends VanillaView<PageTabProps> {
     private editorUnsubscribe: () => void = () => undefined;
     private workingUnsubscribe: () => void = () => undefined;
     private workingEditor: EditorModel | null = null;
+    /** The page whose state the tab is bound to. A restored or recovered page replaces the
+     *  PageModel under the same id, so update() must rebind when the model object changes. */
+    private boundModel: PageTabProps["model"] | undefined;
+    private modelStateUnsubscribe: () => void = () => undefined;
     private iconUnsubscribe: (() => void) | undefined;
     private languageSettingsSubscription: (() => void) | undefined;
     private languageIconCleanup: (() => void) | undefined;
@@ -198,15 +202,7 @@ export class PageTabView extends VanillaView<PageTabProps> {
             if (this.currentEditor) this.applyEditorProjection(this.projectEditorState(this.currentEditor));
         }));
         this.languageSettingsSubscription = this.ownSubscription(settings.watch("tab-recent-languages", () => this.updateLanguageMenu()));
-        this.bind(
-            this.props.model.state,
-            (state) => ({ pinSide: state.pinSide, mainEditorId: state.mainEditorId, version: state.version }),
-            () => {
-                this.syncEditorSubscription();
-                this.syncWorkingSubscription();
-                this.updateView();
-            },
-        );
+        this.bindModelState();
         this.bind(
             pages.state,
             (state) => ({
@@ -227,7 +223,10 @@ export class PageTabView extends VanillaView<PageTabProps> {
     }
 
     protected onUpdate(props: PageTabProps): void {
-        if (props.model !== this.props.model) {
+        // VanillaView.update() assigns this.props before calling onUpdate, so compare against
+        // the model the tab is actually bound to.
+        if (props.model !== this.boundModel) {
+            this.bindModelState();
             this.syncEditorSubscription();
             this.syncWorkingSubscription();
         }
@@ -246,6 +245,20 @@ export class PageTabView extends VanillaView<PageTabProps> {
         this.languageIconCleanup?.();
         this.closeIconCleanup?.();
         this.emptyIconCleanup?.();
+    }
+
+    private bindModelState(): void {
+        this.modelStateUnsubscribe();
+        this.boundModel = this.props.model;
+        this.modelStateUnsubscribe = this.bind(
+            this.props.model.state,
+            (state) => ({ pinSide: state.pinSide, mainEditorId: state.mainEditorId, version: state.version }),
+            () => {
+                this.syncEditorSubscription();
+                this.syncWorkingSubscription();
+                this.updateView();
+            },
+        );
     }
 
     private syncEditorSubscription(): void {
